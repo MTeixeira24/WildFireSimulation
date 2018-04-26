@@ -1,215 +1,134 @@
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-;; Fire in the forest model written by Byron Roland, George Kampis and Istvan Karsai, 2011-2016
-;; The result of this model has been published in Ecological Complexity 28 (2016): 12-23.
-;;Please cite this Netlogo model as:
-;;Roland, B., Kampis, G. and Karsai, I (2016): Fire in the forest. Netlogo v. 5.3.1 simulation.
-;;http://ccl.northwestern.edu/netlogo/models/community/Fire%in%the%forest
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+globals [
+  initial-trees   ;; how many trees (green patches) we started with
+  burned-trees    ;; how many have burned so far
+]
 
+breed [fires fire]    ;; bright red turtles -- the leading edge of the fire
+breed [embers ember]  ;; turtles gradually fading from red to near black
 
-
-globals[i m seed]   ;;Variables used as counters for the year and the excel file number extension
-breed[animals animal]
-breed[fires fire]
-breed[trees tree]
-breed[animalcorpses animalcorpse]    ;;Used to count the number of dead animals
-breed[treecorpses treecorpse]        ;;Count the dead trees
-breed[firecorpses firecorpse]        ;;Count the dead fires
-
-to Setup                             ;;Initializes the program.
-  ;; (for this model to work with NetLogo's new plotting features,
-  ;; __clear-all-and-reset-ticks should be replaced with clear-all at
-  ;; the beginning of your setup procedure and reset-ticks at the end
-  ;; of the procedure.)
-  __clear-all-and-reset-ticks
-  set seed random 10000
-  random-seed seed
-  create-animals NumberofAnimals[
-    set color brown                        ;;Initializes the starting number of
-    set shape "sheep 2"                       ;;organisms and their shape and color
-    setxy random-xcor random-ycor]
-  create-trees NumberofTrees[
-    set color green
-    set shape "tree"
-    setxy random-xcor random-ycor]
-  create-fires FireStrength [
-    set color red
-    set shape "fire"
-    setxy random-xcor random-ycor]
-  update-plot
+to setup
+  clear-all
+  set-default-shape turtles "square"
+  ;; make some green trees
+  ask patches with [(random-float 100) < density]
+    [ set pcolor green ]
+  ;; make a column of burning trees
+  ask patches with [pxcor = min-pxcor]
+    [ ignite ]
+  ;; set tree counts
+  set initial-trees count patches with [pcolor = green]
+  set burned-trees 0
+  reset-ticks
 end
 
-to Go                            ;;Coninuous loop that updates the deathplot
-  ifelse i >= YearsPerSetup         ;;and asks the organisms to do specific
-  [stop]                            ;;things defined below this method
-  [update-deathplot              ;;Continues until variable i has been incremented
-   ask animals[                     ;;to a value greater than the parameter YearsPerSetup
-     move-animal]
-   ask fires[
-     kill-trees
-     kill-animals]
-   update-plot
-   tick
-   end-year]
+to go
+  if not any? turtles  ;; either fires or embers
+    [ stop ]
+  ask fires
+    [ ask neighbors4 with [pcolor = green]
+        [ ignite ]
+      set breed embers ]
+  fade-embers
+  tick
 end
 
-to update-deathplot
-  set-current-plot "Dead Populations"                           ;;Updates the plot of dead animals and trees.
-  set-current-plot-pen "Burned Animals"
-  plot count animalcorpses
-  set-current-plot-pen "Burned Trees"
-  plot count treecorpses
+;; creates the fire turtles
+to ignite  ;; patch procedure
+  sprout-fires 1
+    [ set color red ]
+  set pcolor black
+  set burned-trees burned-trees + 1
 end
 
-to move-animal
-    repeat AnimalMovementSpeed[
-    ifelse any? fires in-radius 1                               ;;Look for fires, if there are any
-    [die]                                                          ;;within 1 block then die.
-    [rt random 360 fd 1]]                                       ;;Animals move randomly as many times as AnimalMovementSpeed
+;; achieve fading color effect for the fire as it burns
+to fade-embers
+  ask embers
+    [ set color color - 0.3  ;; make red darker
+      if color < red - 3.5     ;; are we almost at black?
+        [ set pcolor color
+          die ] ]
 end
 
-to  kill-trees
-  let kill one-of trees in-radius 1
-  ifelse kill != nobody                                                             ;;If theres a tree in the fires path, kill
-    [face kill ask kill [set breed treecorpses hide-turtle] fd 1                       ;;it and hatch 1 more fire.
-      hatch 1 [rt random 360 fd 1]]
-    [set breed firecorpses hide-turtle]                                             ;;Otherwise die
-end
 
-to kill-animals
-  repeat (count animals in-radius 1)                                                 ;;Kills all animals in radius 1
-  [let kill one-of animals in-radius 1
-    if kill != nobody                                                                ;;If theres a animal in the fires path, kill
-      [face kill ask kill [set breed animalcorpses hide-turtle] fd 1]]                  ;;it and then check for trees
-end
-
-to update-plot
-  set-current-plot "Populations"                                        ;;Updates the animal, tree, fire population graph.
-  set-current-plot-pen "animals"                                           ;;this is done every tick so as to keep a coninuous
-  plot count animals                                                       ;;look and feel in the graph
-  set-current-plot-pen "trees"
-  plot count trees
-  set-current-plot-pen "fires"
-  plot count fires
-end
-
-to end-year
-  if ticks > 11
-      [ask animals[
-        death-animal
-        reproduce-animal]
-      create-trees count trees * TreeBreedingPercent / 100[            ;;Create 10 percent of the current number
-        set color green                                                   ;;of trees and hatch them randomly.
-        set shape "tree"
-        setxy random-xcor random-ycor
-        if any? other trees-on patch-ahead 0 [die]]                    ;;If trees on the same patch, die.
-      create-fires FireStrength [                                      ;;Create a given number of fires
-        set color red                                                     ;;based of fire strength parameter
-        set shape "fire"
-        setxy random-xcor random-ycor]
-      ask animalcorpses[                                               ;;kills all the corpses so as to reset
-        die]                                                              ;;the number of dead "turtles" back to 0
-      ask treecorpses[
-        die]
-      ask firecorpses[
-        die]
-      set i i + 1
-      reset-ticks]
-end
-
-to death-animal
-  if AnimalTreeDDDeath?                                                        ;;If animals can die from lack of trees
-    [if not any? trees in-radius 1 [die]]                                      ;;If there are no trees within 1 block, die.
-  ifelse count trees in-radius 1 < 5
-    [if random 50 < AnimalDeathPercent [die]]                                  ;;If there are less than 5 trees within
-    [if random 100 < AnimalDeathPercent [die]]                                    ;;1 block then animal death rate is doubled.
-end
-
-to reproduce-animal
-  ifelse count trees in-radius 2 < AnimalTreeVariableBreeding                  ;;If there are 5 trees within two blocks
-    [stop]                                                                        ;;of the animal, hatch 1 new animal.
-    [ifelse count animals in-radius 2 > AnimalAnimalVariableBreeding           ;;If there are more than 5 animals around
-      [stop]                                                                   ;   ;two blocks dont hatch 1.
-      [hatch 1 [rt random 360 fd 1]]]
-end
-
-to basic-simulation                                     ;;Creates a basic simulation
-  set AnimalTreeDDDeath? false                             ;;used to make life easier
-  set NumberofAnimals 100                                  ;;by just having to press one button
-  set NumberofTrees 500                                    ;;rather than trying to find the
-  set YearsPerSetup 100                                    ;;right values for each parameter
-  set AnimalTreeVariableBreeding 5                         ;;to create a stable ecosystem
-  set AnimalAnimalVariableBreeding 5
-  set TreeBreedingPercent 10
-  set AnimalMovementSpeed 5
-  set AnimalDeathPercent 10
-  set FireStrength 0
-end
+; Copyright 1997 Uri Wilensky.
+; See Info tab for full copyright and license.
 @#$#@#$#@
 GRAPHICS-WINDOW
-681
-23
-1176
-519
+200
+10
+710
+521
 -1
 -1
-12.5122
+2.0
 1
 10
 1
 1
 1
 0
-1
-1
-1
--19
-19
--19
-19
 0
 0
 1
-Month
+-125
+125
+-125
+125
+1
+1
+1
+ticks
 30.0
 
-SLIDER
-8
-52
-283
-85
-NumberofAnimals
-NumberofAnimals
-0
-2000
-100.0
-10
+MONITOR
+43
+131
+158
+176
+percent burned
+(burned-trees / initial-trees)\n* 100
 1
-NIL
-HORIZONTAL
+1
+11
 
 SLIDER
-8
-91
-282
-124
-NumberofTrees
-NumberofTrees
-0
-1000
-500.0
-10
+5
+38
+190
+71
+density
+density
+0.0
+99.0
+57.0
+1.0
 1
-NIL
+%
 HORIZONTAL
 
 BUTTON
-9
-10
-108
-43
-Setup
+106
+79
+175
+115
+go
+go
+T
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+0
+
+BUTTON
+26
+79
+96
+115
+setup
 setup
 NIL
 1
@@ -221,416 +140,95 @@ NIL
 NIL
 1
 
-BUTTON
-116
-10
-211
-43
-Go
-go
-T
-1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
-1
-
-MONITOR
-17
-262
-94
-307
-Animals
-count animals
-17
-1
-11
-
-MONITOR
-102
-262
-180
-307
-Trees
-count trees
-17
-1
-11
-
-MONITOR
-189
-261
-267
-306
-Fires
-count fires
-17
-1
-11
-
-PLOT
-12
-331
-291
-571
-Populations
-Time(Months)
-Populations
-0.0
-0.0
-0.0
-750.0
-true
-true
-"" ""
-PENS
-"Animals" 1.0 0 -6459832 true "" ""
-"Trees" 1.0 0 -10899396 true "" ""
-"Fires" 1.0 0 -2674135 true "" ""
-
-SLIDER
-353
-162
-501
-195
-AnimalMovementSpeed
-AnimalMovementSpeed
-0
-10
-5.0
-1
-1
-NIL
-HORIZONTAL
-
-SLIDER
-353
-201
-531
-234
-AnimalDeathPercent
-AnimalDeathPercent
-0
-100
-10.0
-1
-1
-%
-HORIZONTAL
-
-SWITCH
-351
-69
-523
-102
-AnimalTreeDDDeath?
-AnimalTreeDDDeath?
-1
-1
--1000
-
-SLIDER
-8
-130
-126
-163
-YearsPerSetup
-YearsPerSetup
-0
-100
-100.0
-1
-1
-NIL
-HORIZONTAL
-
-SLIDER
-352
-275
-556
-308
-AnimalTreeVariableBreeding
-AnimalTreeVariableBreeding
-0
-10
-5.0
-1
-1
-NIL
-HORIZONTAL
-
-SLIDER
-352
-238
-558
-271
-AnimalAnimalVariableBreeding
-AnimalAnimalVariableBreeding
-0
-10
-5.0
-1
-1
-NIL
-HORIZONTAL
-
-SLIDER
-351
-110
-516
-143
-TreeBreedingPercent
-TreeBreedingPercent
-0
-100
-10.0
-5
-1
-%
-HORIZONTAL
-
-PLOT
-330
-332
-620
-571
-Dead Populations
-Time(Months)
-Dead Populations
-0.0
-0.0
-0.0
-150.0
-true
-true
-"" ""
-PENS
-"Burned Animals" 1.0 0 -16777216 true "" ""
-"Burned Trees" 1.0 0 -955883 true "" ""
-
-MONITOR
-16
-209
-88
-254
-Year
-i
-17
-1
-11
-
-BUTTON
-137
-130
-255
-163
-Basic Simulation
-basic-simulation
-NIL
-1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
-1
-
-TEXTBOX
-317
-10
-467
-28
-Fire
-12
-0.0
-1
-
-TEXTBOX
-314
-52
-464
-70
-Trees
-12
-0.0
-1
-
-TEXTBOX
-312
-144
-462
-162
-Animals
-12
-0.0
-1
-
-TEXTBOX
-562
-278
-676
-318
-Animal breeding variable based on number of trees present.
-11
-0.0
-1
-
-TEXTBOX
-563
-233
-673
-273
-Animal breeding variable based on number of animals around.
-11
-0.0
-1
-
-TEXTBOX
-537
-66
-669
-114
-Are the animals dependent on the trees to survive?
-11
-0.0
-1
-
-SLIDER
-352
-15
-524
-48
-FireStrength
-FireStrength
-0
-20
-2.0
-1
-1
-NIL
-HORIZONTAL
-
 @#$#@#$#@
 ## WHAT IS IT?
 
-This model explores the dynamics of an animal/tree/fire ecosystem with random fires.
-The result of this model has been published in Ecological Complexity 28 (2016): 12-23.
-
-Abstract:
-
-Our model considers a new element in forest fire modeling, namely the dynamics of a forest animal, intimately linked to the trees. We show that animals and trees react differently to different types of fire. A high probability of fire initiation results in several small fires, which do not allow for a large fuel accumulation and thus the destruction of many trees by fire, but is found to be generally devastating to the animal population at the same time. On the other hand, a low fire initiation probability allows for the accumulation of higher quantities of fuel, which in turn results in larger fires, more devastating to the trees than to the animals. Thus, we suggest that optimal fire management should take into account the relation between fire initiation and its different effects on animals and trees. Further, wildfires are often considered as prime examples for power-law-like frequency distributions, yet there is no agreement on the mechanisms responsible for the observed patterns. Our model suggests that instead of a single unified distribution, a superposition of at least two different distributions can be detected and this suggests multiform mechanisms acting on different scales. None of the discovered distributions are compatible with a power-law hypothesis.
-
-Please cite this Netlogo model as:
-Roland, B., Kampis, G. and Karsai, I (2016): Fire in the forest. Netlogo v. 5.3.1 simulation.
-http://ccl.northwestern.edu/netlogo/models/community/Fire%in%the%forest
+This project simulates the spread of a fire through a forest.  It shows that the fire's chance of reaching the right edge of the forest depends critically on the density of trees. This is an example of a common feature of complex systems, the presence of a non-linear threshold or critical parameter.
 
 ## HOW IT WORKS
 
-The model has three hierarchical levels: entities, interactions, and environment, with the first two being modeled explicitly and the environment being modeled implicitly.
-Populations are characterized by the census of each organism type at the end of a given year. The number of burned trees and animals are counted every year.
-The model is spatially explicit. Trees are immobile, while animals and fires can move, following explicit rules. The state of the agents is tracked through time and defined by the location of each individual and each interaction between individuals and the environment. The population's dynamics and individual behaviors emerge from the interactions at the individual (agent) level. All sensing and interaction are strictly local to the agents. Individuals "know" (access) their own current activity status (i.e., this status is explicitly represented in a state variable) and they can check (i.e., sense) the existence and the status of other agents in the neighborhood.
+The fire starts on the left edge of the forest, and spreads to neighboring trees. The fire spreads in four directions: north, east, south, and west.
 
-
-Things to Know
-********************
-The unit of time is  1 tick = 1 month (12 months is a year).
-
-Animals can breed, whereby one individual becomes 2 individuals:
-  - There must be enough trees around (AnimalTreeVariableBreeding).
-  - There must NOT be more than a certain number of other animals around (AnimalAnimalVariableBreeding).
-
-Animals die by:
-  - Old age (AnimalDeathPercent).
-  - Tree Density dependent death rate (AnimalTreeDDDeath).
-  - Fire burns.
-
-Trees produce seeds:
-  - Some percent of the total current population (TreeBreedingPercent).
-  - A tree only develops if the seend falls into a tree-less spot.
-
-Trees die by:
-  - Fire burn.
-
-Fires are initiated:
-  - Random location.
-  - FireStrength describes the maximum number of fire initiation point/year.
-  - If there is a tree in the adjacent neighborhood, the fire can spread to that neighborhood.
-
-Fires kill:
-  -Trees.
-  -Animals.
-
-Fires die if:
-  -There are no more live trees to burn in the adjacent neighborhood.
+The model assumes there is no wind.  So, the fire must have trees along its path in order to advance.  That is, the fire cannot skip over an unwooded area (patch), so such a patch blocks the fire's motion in that direction.
 
 ## HOW TO USE IT
 
-1.) Initialize the number of animals, trees, and fires.
-2.) Adjust the slider parameters (see below), or use the default settings.
-3.) Press the SETUP button.
-4.) Press the GO button to begin the simulation.
-5.) Look at the main monitor to watch the ecosystem develop.
-6.) Look at the POPULATIONS plot to watch the populations fluctuate over time.
-7.) Look at the DEAD POPULATIONS plot to watch the number of animals and trees that die.
+Click the SETUP button to set up the trees (green) and fire (red on the left-hand side).
 
-Parameters
-***************
-NumberofAnimals: The initial number of animals.
-NumberofTrees: The initial number of trees.
-YearsPerSetup: The number of years per setup run.
-FireStrength: The maximum number of fires created each year.
-AnimalTreeDDDeath: Density dependent death of animals based on the trees.
-TreeBreedingPercent: The percentage of trees that breed every year.
-AnimalMovementSpeed: The number of times a animal moves per month (1 tick).
-AnimalDeathPercent: The percent of animals that will die each year due to old age.
-AnimalAnimalVariableBreeding: Number of animals around an animal that limits its breeding (birth rate depend on animal density).
-AnimalTreeVariableBreeding: The number of trees needed for an animal to breed.
+Click the GO button to start the simulation.
+
+The DENSITY slider controls the density of trees in the forest. (Note: Changes in the DENSITY slider do not take effect until the next SETUP.)
 
 ## THINGS TO NOTICE
 
-Small fire strength will produce a small number of devastating large fires. This is very detrimental to the trees.
+When you run the model, how much of the forest burns. If you run it again with the same settings, do the same trees burn? How similar is the burn from run to run?
 
-Large fire strength produces many smaller and medium sized fires. This is more devastatiung to the animal populations than to the trees.
-
-The distribution of fires DOES NOT follow a power law (see paper for detailed analysis).
+Each turtle that represents a piece of the fire is born and then dies without ever moving. If the fire is made of turtles but no turtles are moving, what does it mean to say that the fire moves? This is an example of different levels in a system: at the level of the individual turtles, there is no motion, but at the level of the turtles collectively over time, the fire moves.
 
 ## THINGS TO TRY
 
-Try changing the TreeBreedingPercent and FireStrength parameters. Notice the significant changes in the population graph.
+Set the density of trees to 55%. At this setting, there is virtually no chance that the fire will reach the right edge of the forest. Set the density of trees to 70%. At this setting, it is almost certain that the fire will reach the right edge. There is a sharp transition around 59% density. At 59% density, the fire has a 50/50 chance of reaching the right edge.
 
-Try finding specific parameters to create a stable ecosystem between the three "breeds" such that none of them become extinct.
+Try setting up and running a BehaviorSpace experiment (see Tools menu) to analyze the percent burned at different tree density levels. Plot the burn-percentage against the density. What kind of curve do you get?
 
-The fire strength parameter corresponds to the number of lightning that can initiate fires in the forest.
+Try changing the size of the lattice (`max-pxcor` and `max-pycor` in the Model Settings). Does it change the burn behavior of the fire?
 
 ## EXTENDING THE MODEL
 
-Add extra parameters such as estimating wind speed and direction as well as temperature and movement patterns of the animals, or add the possibility of the animals moving towards the trees rather than moving randomly looking for an appropriate breeding habitat.
+What if the fire could spread in eight directions (including diagonals)? To do that, use `neighbors` instead of `neighbors4`. How would that change the fire's chances of reaching the right edge? In this model, what "critical density" of trees is needed for the fire to propagate?
+
+Add wind to the model so that the fire can "jump" greater distances in certain directions.
+
+Add the ability to plant trees where you want them. What configurations of trees allow the fire to cross the forest? Which don't? Why is over 59% density likely to result in a tree configuration that works? Why does the likelihood of such a configuration increase so rapidly at the 59% density?
 
 ## NETLOGO FEATURES
 
-Note the use of breeds to model three different kinds of "turtles": animals, trees, and fires.
+Unburned trees are represented by green patches; burning trees are represented by turtles.  Two breeds of turtles are used, "fires" and "embers".  When a tree catches fire, a new fire turtle is created; a fire turns into an ember on the next turn.  Notice how the program gradually darkens the color of embers to achieve the visual effect of burning out.
 
-Note the use of "if random 100 < AnimalDeathPercent" to determine the percent of animals that die each year.
+The `neighbors4` primitive is used to spread the fire.
 
-Also note the random fire strength to signify a random number of fires in a range between the user defined maximal amount and 0. This is much more realistic than a rigidly deterministic number of fires each year.
+You could also write the model without turtles by just having the patches spread the fire, and doing it that way makes the code a little simpler.   Written that way, the model would run much slower, since all of the patches would always be active.  By using turtles, it's much easier to restrict the model's activity to just the area around the leading edge of the fire.
+
+See the "CA 1D Rule 30" and "CA 1D Rule 30 Turtle" for an example of a model written both with and without turtles.
 
 ## RELATED MODELS
 
-Look at "Wolf Sheep Predation" for another model of ecosystem dynamics involving three elements. Also see different forest fire models in the community page, but those mainly focus on 2 components only.
+* Percolation
+* Rumor Mill
 
 ## CREDITS AND REFERENCES
 
-Roland, Byron	roland@goldmail.etsu.edu ETSU BISC Johnson City TN USA
-Kampis, George  kampis.george@gmail.com German Research Center for Artificial Intelligence (DFKI GmbH)
-Karsai, Istvan	karsai@etsu.edu ETSU BISC Johnson City TN USA
+https://en.wikipedia.org/wiki/Forest-fire_model
 
-Paper based on this program:
+## HOW TO CITE
 
-Karsai, I., Roland, B. and Kampis, G. 2016: The effect of fire on an abstract forest ecosystem: An agent based study. Ecological Complexity Volume 28, Pages 12–23. http://dx.doi.org/10.1016/j.ecocom.2016.09.001.
+If you mention this model or the NetLogo software in a publication, we ask that you include the citations below.
+
+For the model itself:
+
+* Wilensky, U. (1997).  NetLogo Fire model.  http://ccl.northwestern.edu/netlogo/models/Fire.  Center for Connected Learning and Computer-Based Modeling, Northwestern University, Evanston, IL.
+
+Please cite the NetLogo software as:
+
+* Wilensky, U. (1999). NetLogo. http://ccl.northwestern.edu/netlogo/. Center for Connected Learning and Computer-Based Modeling, Northwestern University, Evanston, IL.
+
+## COPYRIGHT AND LICENSE
+
+Copyright 1997 Uri Wilensky.
+
+![CC BY-NC-SA 3.0](http://ccl.northwestern.edu/images/creativecommons/byncsa.png)
+
+This work is licensed under the Creative Commons Attribution-NonCommercial-ShareAlike 3.0 License.  To view a copy of this license, visit https://creativecommons.org/licenses/by-nc-sa/3.0/ or send a letter to Creative Commons, 559 Nathan Abbott Way, Stanford, California 94305, USA.
+
+Commercial licenses are also available. To inquire about commercial licenses, please contact Uri Wilensky at uri@northwestern.edu.
+
+This model was created as part of the project: CONNECTED MATHEMATICS: MAKING SENSE OF COMPLEX PHENOMENA THROUGH BUILDING OBJECT-BASED PARALLEL MODELS (OBPML).  The project gratefully acknowledges the support of the National Science Foundation (Applications of Advanced Technologies Program) -- grant numbers RED #9552950 and REC #9632612.
+
+This model was developed at the MIT Media Lab using CM StarLogo.  See Resnick, M. (1994) "Turtles, Termites and Traffic Jams: Explorations in Massively Parallel Microworlds."  Cambridge, MA: MIT Press.  Adapted to StarLogoT, 1997, as part of the Connected Mathematics Project.
+
+This model was converted to NetLogo as part of the projects: PARTICIPATORY SIMULATIONS: NETWORK-BASED DESIGN FOR SYSTEMS LEARNING IN CLASSROOMS and/or INTEGRATED SIMULATION AND MODELING ENVIRONMENT. The project gratefully acknowledges the support of the National Science Foundation (REPP & ROLE programs) -- grant numbers REC #9814682 and REC-0126227. Converted from StarLogoT to NetLogo, 2001.
+
+<!-- 1997 2001 MIT -->
 @#$#@#$#@
 default
 true
@@ -740,13 +338,6 @@ Circle -16777216 true false 60 75 60
 Circle -16777216 true false 180 75 60
 Polygon -16777216 true false 150 168 90 184 62 210 47 232 67 244 90 220 109 205 150 198 192 205 210 220 227 242 251 229 236 206 212 183
 
-fire
-false
-0
-Polygon -7500403 true true 151 286 134 282 103 282 59 248 40 210 32 157 37 108 68 146 71 109 83 72 111 27 127 55 148 11 167 41 180 112 195 57 217 91 226 126 227 203 256 156 256 201 238 263 213 278 183 281
-Polygon -955883 true false 126 284 91 251 85 212 91 168 103 132 118 153 125 181 135 141 151 96 185 161 195 203 193 253 164 286
-Polygon -2674135 true false 155 284 172 268 172 243 162 224 148 201 130 233 131 260 135 282
-
 fish
 false
 0
@@ -830,28 +421,6 @@ Polygon -7500403 true true 165 180 165 210 225 180 255 120 210 135
 Polygon -7500403 true true 135 105 90 60 45 45 75 105 135 135
 Polygon -7500403 true true 165 105 165 135 225 105 255 45 210 60
 Polygon -7500403 true true 135 90 120 45 150 15 180 45 165 90
-
-sheep
-false
-0
-Rectangle -7500403 true true 151 225 180 285
-Rectangle -7500403 true true 47 225 75 285
-Rectangle -7500403 true true 15 75 210 225
-Circle -7500403 true true 135 75 150
-Circle -16777216 true false 165 76 116
-
-sheep 2
-false
-0
-Polygon -7500403 true true 209 183 194 198 179 198 164 183 164 174 149 183 89 183 74 168 59 198 44 198 29 185 43 151 28 121 44 91 59 80 89 80 164 95 194 80 254 65 269 80 284 125 269 140 239 125 224 153 209 168
-Rectangle -7500403 true true 180 195 195 225
-Rectangle -7500403 true true 45 195 60 225
-Rectangle -16777216 true false 180 225 195 240
-Rectangle -16777216 true false 45 225 60 240
-Polygon -7500403 true true 245 60 250 72 240 78 225 63 230 51
-Polygon -7500403 true true 25 72 40 80 42 98 22 91
-Line -16777216 false 270 137 251 122
-Line -16777216 false 266 90 254 90
 
 square
 false
@@ -945,6 +514,9 @@ Polygon -7500403 true true 30 75 75 30 270 225 225 270
 @#$#@#$#@
 NetLogo 6.0.3
 @#$#@#$#@
+set density 60.0
+setup
+repeat 180 [ go ]
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
