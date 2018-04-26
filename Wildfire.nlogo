@@ -1,6 +1,9 @@
 globals [
   initial-trees   ;; how many trees (green patches) we started with
   burned-trees    ;; how many have burned so far
+  fire-sprad-rate ;; Rate of spread of the fire
+  fire-danger-index
+  fuel-moisture-content
 ]
 
 breed [fires fire]    ;; bright red turtles -- the leading edge of the fire
@@ -18,6 +21,8 @@ to setup
   ;; set tree counts
   set initial-trees count patches with [pcolor = green]
   set burned-trees 0
+  ;;Calculating the fire spread rate
+  set fuel-moisture-content ( ( ( 97.7 + 4.06 * Humidity  ) / ( AirTemperature + 6.0 ) ) - ( 0.00854 * Humidity   ) + ( 3000 / DegreeCuring  ) - ( 30 ) )
   reset-ticks
 end
 
@@ -139,6 +144,107 @@ NIL
 NIL
 NIL
 1
+
+SLIDER
+766
+24
+939
+57
+DegreeCuring
+DegreeCuring
+0
+100
+40.0
+1
+1
+%
+HORIZONTAL
+
+SLIDER
+771
+81
+943
+114
+Rainfall
+Rainfall
+0
+200
+30.0
+5
+1
+mm
+HORIZONTAL
+
+SLIDER
+767
+132
+956
+165
+AirTemperature
+AirTemperature
+-10
+40
+34.0
+1
+1
+ºC
+HORIZONTAL
+
+SLIDER
+780
+196
+953
+229
+WindSpeed
+WindSpeed
+0
+50
+11.0
+1
+1
+km/hr
+HORIZONTAL
+
+SLIDER
+796
+266
+1045
+299
+WindDirection
+WindDirection
+-180
+180
+-154.0
+1
+1
+º from North
+HORIZONTAL
+
+SLIDER
+778
+329
+950
+362
+Humidity
+Humidity
+0
+100
+26.0
+1
+1
+%
+HORIZONTAL
+
+MONITOR
+785
+412
+909
+457
+FireDanger Index
+fuel-moisture-content
+17
+1
+11
 
 @#$#@#$#@
 ## WHAT IS IT?
