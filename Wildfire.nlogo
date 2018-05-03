@@ -1,9 +1,11 @@
 globals [
   initial-trees   ;; how many trees (green patches) we started with
   burned-trees    ;; how many have burned so far
-  fire-sprad-rate ;; Rate of spread of the fire
+  fire-spread-rate ;; Rate of spread of the fire
   fire-danger-index
   fuel-moisture-content
+  drought-factor
+  varY
 ]
 
 breed [fires fire]    ;; bright red turtles -- the leading edge of the fire
@@ -21,8 +23,41 @@ to setup
   ;; set tree counts
   set initial-trees count patches with [pcolor = green]
   set burned-trees 0
-  ;;Calculating the fire spread rate
+
+  ;; Calculating Fuel Moisture Content
   set fuel-moisture-content ( ( ( 97.7 + 4.06 * Humidity  ) / ( AirTemperature + 6.0 ) ) - ( 0.00854 * Humidity   ) + ( 3000 / DegreeCuring  ) - ( 30 ) )
+
+  ;; Calculating varY (for Forest terrain)
+  ifelse Precipitation <= 2
+  [set varY 0]
+  [ifelse DaysSinceRain > 1
+    [set varY ((Precipitation - 2) / DaysSinceRain)]
+    [set varY ((Precipitation - 2) / 0.8)]]
+
+  ;; Calculating the Drought Factor (for Forest terrain)
+  set drought-factor max (list (10.5 * (1 - e ^ (-(KeetchByramDroughIndex + 30) / 40)) * ((varY + 42) / (varY ^ (2) + 3 * varY + 42))) 10)
+
+  ;; Calculating Fire Danger Index
+  ;; Area = grassland
+  ifelse Area = "grassland"
+  [ifelse fuel-moisture-content < 18
+    ;; fuel-moisture-content < 18
+    [set fire-danger-index (3.35 * FuelWeight * (e ^ (-0.0987 * fuel-moisture-content + 0.0403 * WindSpeed)))]
+    ;; 18 <= fuel-moisture-content < 30
+    [ifelse fuel-moisture-content < 30
+      [set fire-danger-index (0.299 * FuelWeight * (e ^ ((-1.686 + 0.0403 * WindSpeed) * (30 * fuel-moisture-content))))]
+      ;; fuel-moisture-content >= 30
+      [set fire-danger-index (2.0 * FuelWeight * ln (-23.6 + 5.01 * ln (DegreeCuring) + 0.0281 * AirTemperature - 0.226 * sqrt (Humidity) + 0.633 * sqrt (WindSpeed)))]]]
+  ;; Area = forest
+  [set fire-danger-index (1.25 * drought-factor * e ^ (((AirTemperature - Humidity) / (20.0)) + 0.0234 * WindSpeed))]
+
+  ;; Calculating Fire Spread Rate
+  ifelse Area = "grassland"
+  ;; Area = grassland
+  [set fire-spread-rate (0.13 * fire-danger-index)]
+  ;; Area = forest
+  [set fire-spread-rate (0.0012 * fire-danger-index * FuelWeight)]
+
   reset-ticks
 end
 
@@ -86,21 +121,21 @@ ticks
 30.0
 
 MONITOR
-43
-131
-158
-176
-percent burned
+10
+73
+125
+118
+Percent Burned
 (burned-trees / initial-trees)\n* 100
 1
 1
 11
 
 SLIDER
-5
-38
-190
-71
+757
+13
+942
+46
 density
 density
 0.0
@@ -112,10 +147,10 @@ density
 HORIZONTAL
 
 BUTTON
-106
-79
-175
-115
+92
+10
+161
+46
 go
 go
 T
@@ -129,10 +164,10 @@ NIL
 0
 
 BUTTON
-26
-79
-96
-115
+12
+10
+82
+46
 setup
 setup
 NIL
@@ -146,10 +181,10 @@ NIL
 1
 
 SLIDER
-766
-24
-939
-57
+758
+56
+931
+89
 DegreeCuring
 DegreeCuring
 0
@@ -161,25 +196,25 @@ DegreeCuring
 HORIZONTAL
 
 SLIDER
-771
-81
-943
-114
-Rainfall
-Rainfall
+758
+99
+930
+132
+Precipitation
+Precipitation
 0
 200
 30.0
-5
+1
 1
 mm
 HORIZONTAL
 
 SLIDER
-767
-132
-956
-165
+755
+239
+944
+272
 AirTemperature
 AirTemperature
 -10
@@ -191,10 +226,10 @@ AirTemperature
 HORIZONTAL
 
 SLIDER
-780
-196
-953
-229
+755
+284
+928
+317
 WindSpeed
 WindSpeed
 0
@@ -206,25 +241,25 @@ km/hr
 HORIZONTAL
 
 SLIDER
-796
-266
-1045
-299
+754
+330
+1003
+363
 WindDirection
 WindDirection
 -180
 180
--154.0
+-157.0
 1
 1
 º from North
 HORIZONTAL
 
 SLIDER
-778
-329
-950
-362
+754
+374
+926
+407
 Humidity
 Humidity
 0
@@ -236,15 +271,114 @@ Humidity
 HORIZONTAL
 
 MONITOR
-785
-412
-909
-457
-FireDanger Index
+9
+131
+141
+176
+FuelMoisture Content
 fuel-moisture-content
-17
+5
 1
 11
+
+MONITOR
+7
+294
+117
+339
+FireDanger Index
+fire-danger-index
+5
+1
+11
+
+MONITOR
+7
+354
+110
+399
+FireSpread Rate
+fire-spread-rate
+5
+1
+11
+
+CHOOSER
+757
+472
+895
+517
+Area
+Area
+"grassland" "forest"
+0
+
+SLIDER
+756
+425
+928
+458
+FuelWeight
+FuelWeight
+0
+100
+2.0
+1
+1
+tonnes/ha
+HORIZONTAL
+
+MONITOR
+8
+232
+102
+277
+DroughtFactor
+drought-factor
+5
+1
+11
+
+SLIDER
+758
+147
+930
+180
+DaysSinceRain
+DaysSinceRain
+1
+5
+1.0
+1
+1
+days
+HORIZONTAL
+
+MONITOR
+9
+182
+66
+227
+varY
+varY
+5
+1
+11
+
+SLIDER
+758
+191
+975
+224
+KeetchByramDroughIndex
+KeetchByramDroughIndex
+0
+200
+50.0
+1
+1
+mm
+HORIZONTAL
 
 @#$#@#$#@
 ## WHAT IS IT?
