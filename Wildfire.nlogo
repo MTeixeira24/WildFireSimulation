@@ -30,7 +30,7 @@ to setup
   ;; Calculating varY (for Forest terrain)
   ifelse Precipitation <= 2
   [set varY 0]
-  [ifelse DaysSinceRain > 1
+  [ifelse DaysSinceRain >= 1
     [set varY ((Precipitation - 2) / DaysSinceRain)]
     [set varY ((Precipitation - 2) / 0.8)]]
 
@@ -346,9 +346,9 @@ SLIDER
 180
 DaysSinceRain
 DaysSinceRain
-1
+0
 5
-1.0
+2.0
 1
 1
 days
