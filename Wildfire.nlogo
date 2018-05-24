@@ -11,6 +11,7 @@ globals [
 breed [fires fire]    ;; bright red turtles -- the leading edge of the fire
 breed [embers ember]  ;; turtles gradually fading from red to near black
 
+turtles-own [spreadNorth spreadEast spreadSouth spreadWest]
 to setup
   clear-all
   set-default-shape turtles "square"
@@ -18,7 +19,7 @@ to setup
   ask patches with [(random-float 100) < density]
     [ set pcolor green ]
   ;; make a column of burning trees
-  ask patches with [pxcor = min-pxcor]
+  ask patches with [pxcor > 20 and pxcor < 25 and pycor > 20 and pycor < 25]
     [ ignite ]
   ;; set tree counts
   set initial-trees count patches with [pcolor = green]
@@ -47,7 +48,7 @@ to setup
     [ifelse fuel-moisture-content < 30
       [set fire-danger-index (0.299 * FuelWeight * (e ^ ((-1.686 + 0.0403 * WindSpeed) * (30 * fuel-moisture-content))))]
       ;; fuel-moisture-content >= 30
-      [set fire-danger-index (2.0 * FuelWeight * ln (-23.6 + 5.01 * ln (DegreeCuring) + 0.0281 * AirTemperature - 0.226 * sqrt (Humidity) + 0.633 * sqrt (WindSpeed)))]]]
+      [set fire-danger-index (2.0 * FuelWeight * e ^ (-23.6 + 5.01 * ln (DegreeCuring) + 0.0281 * AirTemperature - 0.226 * sqrt (Humidity) + 0.633 * sqrt (WindSpeed)))]]]
   ;; Area = forest
   [set fire-danger-index (1.25 * drought-factor * e ^ (((AirTemperature - Humidity) / (20.0)) + 0.0234 * WindSpeed))]
 
@@ -64,6 +65,12 @@ end
 to go
   if not any? turtles  ;; either fires or embers
     [ stop ]
+  ask embers
+  [ set spreadNorth spreadNorth + fire-spread-rate
+    set spreadSouth spreadSouth + fire-spread-rate
+    set spreadEast spreadEast + fire-spread-rate
+    set spreadWest spreadWest + fire-spread-rate ]
+  ;;check if spread as exceeded 10km
   ask fires
     [ ask neighbors4 with [pcolor = green]
         [ ignite ]
@@ -337,7 +344,7 @@ WindDirection
 WindDirection
 -180
 180
--157.0
+-105.0
 1
 1
 º from North
@@ -358,6 +365,52 @@ Humidity
 %
 HORIZONTAL
 
+<<<<<<< HEAD
+=======
+MONITOR
+9
+131
+141
+176
+FuelMoisture Content
+fuel-moisture-content
+5
+1
+11
+
+MONITOR
+7
+294
+117
+339
+FireDanger Index
+fire-danger-index
+5
+1
+11
+
+MONITOR
+7
+354
+110
+399
+FireSpread Rate
+fire-spread-rate
+5
+1
+11
+
+CHOOSER
+757
+472
+895
+517
+Area
+Area
+"grassland" "forest"
+1
+
+>>>>>>> 7f65f01775d1d3998d0575cca7c0ff672c607c29
 SLIDER
 760
 415
@@ -367,7 +420,7 @@ FuelWeight
 FuelWeight
 0
 100
-2.0
+18.0
 1
 1
 tonnes/ha
