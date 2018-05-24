@@ -47,7 +47,7 @@ to setup
     [ifelse fuel-moisture-content < 30
       [set fire-danger-index (0.299 * FuelWeight * (e ^ ((-1.686 + 0.0403 * WindSpeed) * (30 * fuel-moisture-content))))]
       ;; fuel-moisture-content >= 30
-      [set fire-danger-index (2.0 * FuelWeight * ln (-23.6 + 5.01 * ln (DegreeCuring) + 0.0281 * AirTemperature - 0.226 * sqrt (Humidity) + 0.633 * sqrt (WindSpeed)))]]]
+      [set fire-danger-index (2.0 * FuelWeight * e ^ (-23.6 + 5.01 * ln (DegreeCuring) + 0.0281 * AirTemperature - 0.226 * sqrt (Humidity) + 0.633 * sqrt (WindSpeed)))]]]
   ;; Area = forest
   [set fire-danger-index (1.25 * drought-factor * e ^ (((AirTemperature - Humidity) / (20.0)) + 0.0234 * WindSpeed))]
 
