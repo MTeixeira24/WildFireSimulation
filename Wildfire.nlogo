@@ -11,6 +11,7 @@ globals [
 breed [fires fire]    ;; bright red turtles -- the leading edge of the fire
 breed [embers ember]  ;; turtles gradually fading from red to near black
 
+turtles-own [spreadNorth spreadEast spreadSouth spreadWest]
 to setup
   clear-all
   set-default-shape turtles "square"
@@ -18,7 +19,7 @@ to setup
   ask patches with [(random-float 100) < density]
     [ set pcolor green ]
   ;; make a column of burning trees
-  ask patches with [pxcor = min-pxcor]
+  ask patches with [pxcor > 20 and pxcor < 25 and pycor > 20 and pycor < 25]
     [ ignite ]
   ;; set tree counts
   set initial-trees count patches with [pcolor = green]
@@ -64,6 +65,12 @@ end
 to go
   if not any? turtles  ;; either fires or embers
     [ stop ]
+  ask embers
+  [ set spreadNorth spreadNorth + fire-spread-rate
+    set spreadSouth spreadSouth + fire-spread-rate
+    set spreadEast spreadEast + fire-spread-rate
+    set spreadWest spreadWest + fire-spread-rate ]
+  ;;check if spread as exceeded 10km
   ask fires
     [ ask neighbors4 with [pcolor = green]
         [ ignite ]
@@ -249,7 +256,7 @@ WindDirection
 WindDirection
 -180
 180
--157.0
+-105.0
 1
 1
 º from North
@@ -311,7 +318,7 @@ CHOOSER
 Area
 Area
 "grassland" "forest"
-0
+1
 
 SLIDER
 756
@@ -322,7 +329,7 @@ FuelWeight
 FuelWeight
 0
 100
-2.0
+18.0
 1
 1
 tonnes/ha
