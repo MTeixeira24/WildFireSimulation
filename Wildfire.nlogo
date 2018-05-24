@@ -365,52 +365,6 @@ Humidity
 %
 HORIZONTAL
 
-<<<<<<< HEAD
-=======
-MONITOR
-9
-131
-141
-176
-FuelMoisture Content
-fuel-moisture-content
-5
-1
-11
-
-MONITOR
-7
-294
-117
-339
-FireDanger Index
-fire-danger-index
-5
-1
-11
-
-MONITOR
-7
-354
-110
-399
-FireSpread Rate
-fire-spread-rate
-5
-1
-11
-
-CHOOSER
-757
-472
-895
-517
-Area
-Area
-"grassland" "forest"
-1
-
->>>>>>> 7f65f01775d1d3998d0575cca7c0ff672c607c29
 SLIDER
 760
 415
