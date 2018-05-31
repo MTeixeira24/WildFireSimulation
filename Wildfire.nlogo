@@ -12,6 +12,7 @@ breed [fires fire]    ;; bright red turtles -- the leading edge of the fire
 breed [embers ember]  ;; turtles gradually fading from red to near black
 
 turtles-own [spreadNorth spreadEast spreadSouth spreadWest]
+patches-own [fuel]
 to setup
   clear-all
   set-default-shape turtles "square"
@@ -19,12 +20,12 @@ to setup
   ask patches with [(random-float 100) < density]
     [ set pcolor green ]
   ;; make a column of burning trees
-  ask patches with [pxcor > 20 and pxcor < 25 and pycor > 20 and pycor < 25]
+  ask patches with [pxcor = 20 and pycor = 25]
     [ ignite ]
   ;; set tree counts
   set initial-trees count patches with [pcolor = green]
   set burned-trees 0
-
+  ask patches [ set fuel fuelWeight * 10000 ] ;; Each patch is 10 km2 in area which is equal to 10000 ha.
   ;; Calculating Fuel Moisture Content
   set fuel-moisture-content ( ( ( 97.7 + 4.06 * Humidity  ) / ( AirTemperature + 6.0 ) ) - ( 0.00854 * Humidity   ) + ( 3000 / DegreeCuring  ) - ( 30 ) )
 
@@ -65,16 +66,27 @@ end
 to go
   if not any? turtles  ;; either fires or embers
     [ stop ]
-  ask embers
+  ask fires
   [ set spreadNorth spreadNorth + fire-spread-rate
     set spreadSouth spreadSouth + fire-spread-rate
     set spreadEast spreadEast + fire-spread-rate
     set spreadWest spreadWest + fire-spread-rate ]
-  ;;check if spread as exceeded 10km
-  ask fires
-    [ ask neighbors4 with [pcolor = green]
-        [ ignite ]
-      set breed embers ]
+  ask fires ;; checks if fire has spreaded outside of its area
+  [
+    if spreadNorth > 5 [ ask patches at-points [[0 1]]  [ if pcolor = green  [ignite] ] ]
+    if spreadSouth > 5 [ ask patches at-points [[0 -1]]  [ if pcolor = green  [ignite] ] ]
+    if spreadWest > 5 [ ask patches at-points [[-1 0]]  [ if pcolor = green  [ignite] ] ]
+    if spreadEast > 5 [ ask patches at-points [[1 0]]  [ if pcolor = green  [ignite] ] ]
+    ask patch-at 0 0 [
+      set fuel fuel - 1000 ;; decrement the fuel available at the patch. Number is arbitrary, need to find a better function
+    ]
+    let ftemp [fuel] of patch-at 0 0
+    if ftemp < 10 [ die ] ;; kill turtle when the fuel weight is bellow 10
+  ]
+  ;ask fires [
+  ;  [ ask neighbors4 with [pcolor = green]
+  ;      [ ignite ]
+  ;    set breed embers ]
   fade-embers
   tick
 end
@@ -127,7 +139,6 @@ GRAPHICS-WINDOW
 ticks
 30.0
 
-
 BUTTON
 12
 10
@@ -162,12 +173,11 @@ NIL
 NIL
 0
 
-
 MONITOR
 12
 70
 125
-118
+115
 Percent Burned
 (burned-trees / initial-trees)\n* 100
 1
@@ -178,7 +188,7 @@ MONITOR
 12
 130
 125
-176
+175
 FuelMoisture Content
 fuel-moisture-content
 5
@@ -189,7 +199,7 @@ MONITOR
 12
 190
 125
-227
+235
 varY
 varY
 5
@@ -200,7 +210,7 @@ MONITOR
 12
 250
 125
-277
+295
 DroughtFactor
 drought-factor
 5
@@ -211,7 +221,7 @@ MONITOR
 12
 310
 125
-339
+355
 FireDanger Index
 fire-danger-index
 5
@@ -222,19 +232,18 @@ MONITOR
 12
 370
 125
-399
+415
 FireSpread Rate
 fire-spread-rate
 5
 1
 11
 
-
 SLIDER
 760
 10
 950
-46
+43
 density
 density
 0.0
@@ -249,7 +258,7 @@ SLIDER
 760
 55
 950
-89
+88
 DegreeCuring
 DegreeCuring
 0
@@ -264,7 +273,7 @@ SLIDER
 760
 100
 950
-132
+133
 Precipitation
 Precipitation
 0
@@ -279,7 +288,7 @@ SLIDER
 760
 145
 950
-180
+178
 DaysSinceRain
 DaysSinceRain
 0
@@ -294,7 +303,7 @@ SLIDER
 760
 190
 950
-224
+223
 KeetchByramDroughIndex
 KeetchByramDroughIndex
 0
@@ -309,7 +318,7 @@ SLIDER
 760
 235
 950
-272
+268
 AirTemperature
 AirTemperature
 -10
@@ -324,7 +333,7 @@ SLIDER
 760
 280
 950
-317
+313
 WindSpeed
 WindSpeed
 0
@@ -339,7 +348,7 @@ SLIDER
 760
 325
 950
-363
+358
 WindDirection
 WindDirection
 -180
@@ -354,7 +363,7 @@ SLIDER
 760
 370
 950
-407
+403
 Humidity
 Humidity
 0
@@ -369,7 +378,7 @@ SLIDER
 760
 415
 950
-458
+448
 FuelWeight
 FuelWeight
 0
@@ -384,11 +393,11 @@ CHOOSER
 760
 460
 950
-517
+505
 Area
 Area
 "grassland" "forest"
-0
+1
 
 @#$#@#$#@
 ## WHAT IS IT?
