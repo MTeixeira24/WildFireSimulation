@@ -2,16 +2,20 @@ globals [
   initial-trees   ;; how many trees (green patches) we started with
   burned-trees    ;; how many have burned so far
   fire-spread-rate ;; Rate of spread of the fire
+  fire-spread-rate-wind
+  ellipseLTW
+  ellipseEccentricity
   fire-danger-index
   fuel-moisture-content
   drought-factor
   varY
+  fuelWeightPerPatch
 ]
 
 breed [fires fire]    ;; bright red turtles -- the leading edge of the fire
 breed [embers ember]  ;; turtles gradually fading from red to near black
 
-turtles-own [spreadNorth spreadEast spreadSouth spreadWest]
+turtles-own [spreadNW spreadNorth spreadNE spreadEast spreadSE spreadSouth spreadSW spreadWest]
 patches-own [fuel]
 to setup
   clear-all
@@ -19,13 +23,13 @@ to setup
   ;; make some green trees
   ask patches with [(random-float 100) < density]
     [ set pcolor green ]
-  ;; make a column of burning trees
-  ask patches with [pxcor = 20 and pycor = 25]
-    [ ignite ]
   ;; set tree counts
   set initial-trees count patches with [pcolor = green]
   set burned-trees 0
-  ask patches [ set fuel fuelWeight * 10000 ] ;; Each patch is 10 km2 in area which is equal to 10000 ha.
+  set fuelWeightPerPatch fuelWeight * 10000 ;; Each patch is 10 km2 in area which is equal to 10000 ha.
+  ask patches with [ pcolor = green ] [ set fuel fuelWeightPerPatch ]
+  ask patches with [pxcor = 20 and pycor = 25]
+    [ ignite ]
   ;; Calculating Fuel Moisture Content
   set fuel-moisture-content ( ( ( 97.7 + 4.06 * Humidity  ) / ( AirTemperature + 6.0 ) ) - ( 0.00854 * Humidity   ) + ( 3000 / DegreeCuring  ) - ( 30 ) )
 
@@ -58,7 +62,11 @@ to setup
   ;; Area = grassland
   [set fire-spread-rate (0.13 * fire-danger-index)]
   ;; Area = forest
-  [set fire-spread-rate (0.0012 * fire-danger-index * FuelWeight)]
+  [set fire-spread-rate (0.0012 * fire-danger-index * fuelWeight)]
+
+  ;;Calculating fire spread in the presence of wind
+  set ellipseLTW  ( 0.936 * e ^ (50.5 * WindSpeed) ) + ( 0.461 * e ^ (-30.5 * WindSpeed) ) - 0.397
+  set ellipseEccentricity  sqrt ( 1 - (1 / ( ellipseLTW ^ 2 )) )
 
   reset-ticks
 end
@@ -70,17 +78,26 @@ to go
   [ set spreadNorth spreadNorth + fire-spread-rate
     set spreadSouth spreadSouth + fire-spread-rate
     set spreadEast spreadEast + fire-spread-rate
-    set spreadWest spreadWest + fire-spread-rate ]
+    set spreadWest spreadWest + fire-spread-rate
+    set spreadNE spreadNE + fire-spread-rate
+    set spreadSE spreadSE + fire-spread-rate
+    set spreadNW spreadNW + fire-spread-rate
+    set spreadSW spreadSW + fire-spread-rate ]
   ask fires ;; checks if fire has spreaded outside of its area
   [
     if spreadNorth > 5 [ ask patches at-points [[0 1]]  [ if pcolor = green  [ignite] ] ]
     if spreadSouth > 5 [ ask patches at-points [[0 -1]]  [ if pcolor = green  [ignite] ] ]
     if spreadWest > 5 [ ask patches at-points [[-1 0]]  [ if pcolor = green  [ignite] ] ]
     if spreadEast > 5 [ ask patches at-points [[1 0]]  [ if pcolor = green  [ignite] ] ]
+    if spreadNW > 5 [ ask patches at-points [[-1 1]]  [ if pcolor = green   [ignite] ] ]
+    if spreadNE > 5 [ ask patches at-points [[1 1]]  [ if pcolor = green [ignite] ] ]
+    if spreadSW > 5 [ ask patches at-points [[-1 -1]]  [ if pcolor = green  [ignite] ] ]
+    if spreadSE > 5 [ ask patches at-points [[1 -1]]  [ if pcolor = green  [ignite] ] ]
     ask patch-at 0 0 [
       set fuel fuel - 1000 ;; decrement the fuel available at the patch. Number is arbitrary, need to find a better function
     ]
     let ftemp [fuel] of patch-at 0 0
+    set color 10 + ( 5 * ( ftemp / fuelWeightPerPatch ) ) ;; Fade color
     if ftemp < 10 [ die ] ;; kill turtle when the fuel weight is bellow 10
   ]
   ;ask fires [
@@ -338,10 +355,10 @@ WindSpeed
 WindSpeed
 0
 50
-11.0
+25.0
 1
 1
-km/hr
+m/s
 HORIZONTAL
 
 SLIDER
