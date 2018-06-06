@@ -71,7 +71,7 @@ to setup
   ;set ellipseEccentricity  sqrt ( 1 - (1 / ( ellipseLTW ^ 2 )) )
 
   ;set ellipseLTW  ( 0.936 * 1.7 ^ (50.5 * WindSpeed) ) + ( 0.461 * e ^ (-30.5 * WindSpeed) ) - 0.397
-  set ellipseLTW  ( 0.936 * e ^ (0.2566 * WindSpeed) ) + ( 0.461 * e ^ (-0.1548 * WindSpeed) ) - 0.397
+  set ellipseLTW  ( 0.936 * e ^ ( * WindSpeed) ) + ( 0.461 * e ^ (-30.5 * WindSpeed) ) - 0.397
   set ellipseEccentricity  sqrt ( 1 - (1 / ( ellipseLTW ^ 2 )) )
   set thetaAngle 20 ; RANDOM VALUE FOR TESTING
   set fire-spread-rate-theta fire-spread-rate * ( (1 - ellipseEccentricity) / (1 - ellipseEccentricity * cos thetaAngle) )
