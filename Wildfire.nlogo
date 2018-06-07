@@ -33,13 +33,19 @@ to setup
   ;; make some green trees
   ask patches with [(random-float 100) < density]
     [ set pcolor green ]
+  set fuelWeightPerPatch fuelWeight * 10000 ;; Each patch is 10 km2 in area which is equal to 10000 ha.
+  ask patches with [ pcolor = green ] [ set fuel fuelWeightPerPatch ]
+  ask patches with [ pcolor != green ] [
+    set pcolor green - 4
+    set fuel fuelWeightPerPatch / 2 ;;Arbitrary value
+  ]
   ;; set tree counts
   set initial-trees count patches with [pcolor = green]
   set burned-trees 0
-  set fuelWeightPerPatch fuelWeight * 10000 ;; Each patch is 10 km2 in area which is equal to 10000 ha.
-  ask patches with [ pcolor = green ] [ set fuel fuelWeightPerPatch ]
-  ask one-of patches with [pcolor = green]
-    [ ignite ]
+  ask one-of patches with [pcolor = green][
+    ignite
+    ask neighbors4 [ignite]
+  ]
   ;; Calculating Fuel Moisture Content
   set fuel-moisture-content ( ( ( 97.7 + 4.06 * Humidity  ) / ( AirTemperature + 6.0 ) ) - ( 0.00854 * Humidity   ) + ( 3000 / DegreeCuring  ) - ( 30 ) )
 
@@ -114,14 +120,14 @@ to go
     set spreadSW spreadSW + fire-spread-rate-SW ]
   ask fires ;; checks if fire has spreaded outside of its area
   [
-    if spreadNorth > 5 [ ask patches at-points [[0 1]]  [ if pcolor = green  [ignite] ] ]
-    if spreadSouth > 5 [ ask patches at-points [[0 -1]]  [ if pcolor = green  [ignite] ] ]
-    if spreadWest > 5 [ ask patches at-points [[-1 0]]  [ if pcolor = green  [ignite] ] ]
-    if spreadEast > 5 [ ask patches at-points [[1 0]]  [ if pcolor = green  [ignite] ] ]
-    if spreadNW > 5 [ ask patches at-points [[-1 1]]  [ if pcolor = green   [ignite] ] ]
-    if spreadNE > 5 [ ask patches at-points [[1 1]]  [ if pcolor = green [ignite] ] ]
-    if spreadSW > 5 [ ask patches at-points [[-1 -1]]  [ if pcolor = green  [ignite] ] ]
-    if spreadSE > 5 [ ask patches at-points [[1 -1]]  [ if pcolor = green  [ignite] ] ]
+    if spreadNorth > 5 [ ask patches at-points [[0 1]]  [ if pcolor != black  [ignite] ] ]
+    if spreadSouth > 5 [ ask patches at-points [[0 -1]]  [ if pcolor != black  [ignite] ] ]
+    if spreadWest > 5 [ ask patches at-points [[-1 0]]  [ if pcolor != black  [ignite] ] ]
+    if spreadEast > 5 [ ask patches at-points [[1 0]]  [ if pcolor != black  [ignite] ] ]
+    if spreadNW > 5 [ ask patches at-points [[-1 1]]  [ if pcolor != black   [ignite] ] ]
+    if spreadNE > 5 [ ask patches at-points [[1 1]]  [ if pcolor != black [ignite] ] ]
+    if spreadSW > 5 [ ask patches at-points [[-1 -1]]  [ if pcolor != black  [ignite] ] ]
+    if spreadSE > 5 [ ask patches at-points [[1 -1]]  [ if pcolor != black [ignite] ] ]
     ask patch-at 0 0 [
       set fuel fuel - 1000 ;; decrement the fuel available at the patch. Number is arbitrary, need to find a better function
     ]
@@ -399,7 +405,7 @@ WindDirection
 WindDirection
 -179
 180
-73.0
+55.0
 1
 1
 º from North
