@@ -7,6 +7,14 @@ globals [
   ellipseLTW
   ellipseEccentricity
   thetaAngle ;; variable value
+  fire-spread-rate-N
+  fire-spread-rate-NW
+  fire-spread-rate-NE
+  fire-spread-rate-S
+  fire-spread-rate-SE
+  fire-spread-rate-SW
+  fire-spread-rate-W
+  fire-spread-rate-E
   fire-danger-index
   fuel-moisture-content
   drought-factor
@@ -30,7 +38,7 @@ to setup
   set burned-trees 0
   set fuelWeightPerPatch fuelWeight * 10000 ;; Each patch is 10 km2 in area which is equal to 10000 ha.
   ask patches with [ pcolor = green ] [ set fuel fuelWeightPerPatch ]
-  ask patches with [pxcor = 20 and pycor = 25]
+  ask one-of patches with [pcolor = green]
     [ ignite ]
   ;; Calculating Fuel Moisture Content
   set fuel-moisture-content ( ( ( 97.7 + 4.06 * Humidity  ) / ( AirTemperature + 6.0 ) ) - ( 0.00854 * Humidity   ) + ( 3000 / DegreeCuring  ) - ( 30 ) )
@@ -76,21 +84,34 @@ to setup
   set thetaAngle 20 ; RANDOM VALUE FOR TESTING
   set fire-spread-rate-theta fire-spread-rate * ( (1 - ellipseEccentricity) / (1 - ellipseEccentricity * cos thetaAngle) )
 
+  set fire-spread-rate-N calculateWindSpread(0)
+  set fire-spread-rate-NE calculateWindSpread(45)
+  set fire-spread-rate-NW calculateWindSpread(-45)
+  set fire-spread-rate-S calculateWindSpread(180)
+  set fire-spread-rate-SE calculateWindSpread(135)
+  set fire-spread-rate-SW calculateWindSpread(-135)
+  set fire-spread-rate-W calculateWindSpread(-45)
+  set fire-spread-rate-E calculateWindSpread(90)
+
   reset-ticks
+end
+
+to-report calculateWindSpread [angle]
+  report fire-spread-rate * ( (1 - ellipseEccentricity) / (1 - ellipseEccentricity * cos ( angle - WindDirection )) )
 end
 
 to go
   if not any? turtles  ;; either fires or embers
     [ stop ]
   ask fires
-  [ set spreadNorth spreadNorth + fire-spread-rate
-    set spreadSouth spreadSouth + fire-spread-rate
-    set spreadEast spreadEast + fire-spread-rate
-    set spreadWest spreadWest + fire-spread-rate
-    set spreadNE spreadNE + fire-spread-rate
-    set spreadSE spreadSE + fire-spread-rate
-    set spreadNW spreadNW + fire-spread-rate
-    set spreadSW spreadSW + fire-spread-rate ]
+  [ set spreadNorth spreadNorth + fire-spread-rate-N
+    set spreadSouth spreadSouth + fire-spread-rate-S
+    set spreadEast spreadEast + fire-spread-rate-E
+    set spreadWest spreadWest + fire-spread-rate-W
+    set spreadNE spreadNE + fire-spread-rate-NE
+    set spreadSE spreadSE + fire-spread-rate-SE
+    set spreadNW spreadNW + fire-spread-rate-NW
+    set spreadSW spreadSW + fire-spread-rate-SW ]
   ask fires ;; checks if fire has spreaded outside of its area
   [
     if spreadNorth > 5 [ ask patches at-points [[0 1]]  [ if pcolor = green  [ignite] ] ]
@@ -273,7 +294,7 @@ density
 density
 0.0
 99.0
-57.0
+59.0
 1.0
 1
 %
@@ -376,9 +397,9 @@ SLIDER
 358
 WindDirection
 WindDirection
--180
+-179
 180
--105.0
+73.0
 1
 1
 º from North
@@ -431,6 +452,28 @@ MONITOR
 509
 ellipseLTW
 ellipseLTW
+17
+1
+11
+
+MONITOR
+1063
+148
+1183
+193
+FIreSpreadNorth
+fire-spread-rate-N
+17
+1
+11
+
+MONITOR
+1062
+205
+1185
+250
+FireSpreadSouth
+fire-spread-rate-S
 17
 1
 11
