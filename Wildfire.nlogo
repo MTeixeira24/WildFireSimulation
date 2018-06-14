@@ -1,6 +1,10 @@
 globals [
   initial-trees   ;; how many trees (green patches) we started with
   burned-trees    ;; how many have burned so far
+  initial-roads
+  initial-houses
+  burned-houses
+  burned-roads
   fire-spread-rate ;; Rate of spread of the fire
   fire-spread-rate-wind
   fire-spread-rate-theta
@@ -26,7 +30,7 @@ breed [fires fire]    ;; bright red turtles -- the leading edge of the fire
 breed [embers ember]  ;; turtles gradually fading from red to near black
 
 turtles-own [spreadNW spreadNorth spreadNE spreadEast spreadSE spreadSouth spreadSW spreadWest]
-patches-own [fuel]
+patches-own [fuel landscape]
 to setup
   clear-all
   set-default-shape turtles "square"
@@ -39,9 +43,25 @@ to setup
     set pcolor green - 4
     set fuel fuelWeightPerPatch / 2 ;;Arbitrary value
   ]
+  foreach [20 35] [
+    x -> foreach [20 32 44 56] [
+      y -> ask patches with [ pxcor > x AND pxcor < x + 10 AND pycor > y AND pycor < y + 10 ] [
+        set pcolor yellow
+        set landscape "house"
+      ]
+    ]
+  ]
+  ask patches with [ pxcor >= 30 AND pxcor <= 35 ] [
+    set pcolor gray
+    set landscape "road"
+  ]
   ;; set tree counts
   set initial-trees count patches with [pcolor = green]
+  set initial-roads count patches with [landscape = "road"]
+  set initial-houses count patches with [landscape = "house"]
   set burned-trees 0
+  set burned-houses 0
+  set burned-roads 0
   ask one-of patches with [pcolor = green][
     ignite
     ask neighbors4 [ignite]
@@ -375,7 +395,7 @@ AirTemperature
 AirTemperature
 -10
 40
-34.0
+23.0
 1
 1
 ºC
@@ -390,7 +410,7 @@ WindSpeed
 WindSpeed
 0
 50
-7.0
+25.0
 1
 1
 m/s
@@ -405,7 +425,7 @@ WindDirection
 WindDirection
 -179
 180
-55.0
+180.0
 1
 1
 º from North
@@ -420,7 +440,7 @@ Humidity
 Humidity
 0
 100
-26.0
+13.0
 1
 1
 %
@@ -481,6 +501,28 @@ MONITOR
 FireSpreadSouth
 fire-spread-rate-S
 17
+1
+11
+
+MONITOR
+198
+534
+384
+579
+Percent of Houses Burned
+(burned-houses / initial-houses)\n* 100
+1
+1
+11
+
+MONITOR
+399
+534
+564
+579
+Percent of road burned
+(burned-roads / initial-roads)\n* 100
+1
 1
 11
 
