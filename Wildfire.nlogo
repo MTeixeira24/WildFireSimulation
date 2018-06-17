@@ -1,10 +1,6 @@
 globals [
   initial-trees   ;; how many trees (green patches) we started with
   burned-trees    ;; how many have burned so far
-  initial-roads
-  initial-houses
-  burned-houses
-  burned-roads
   fire-spread-rate ;; Rate of spread of the fire
   fire-spread-rate-wind
   fire-spread-rate-theta
@@ -24,6 +20,10 @@ globals [
   drought-factor
   varY
   fuelWeightPerPatch
+  initial-roads
+  initial-houses
+  burned-roads
+  burned-houses
 ]
 
 breed [fires fire]    ;; bright red turtles -- the leading edge of the fire
@@ -55,7 +55,7 @@ to setup
     set pcolor gray
     set landscape "road"
   ]
-  ;; set tree counts
+;; set tree counts
   set initial-trees count patches with [pcolor = green]
   set initial-roads count patches with [landscape = "road"]
   set initial-houses count patches with [landscape = "house"]
@@ -167,8 +167,11 @@ end
 to ignite  ;; patch procedure
   sprout-fires 1
     [ set color red ]
+  if pcolor = green [set burned-trees burned-trees + 1]
+  if pcolor = yellow [set burned-houses burned-houses + 1]
+  if pcolor = gray [set burned-roads burned-roads + 1]
   set pcolor black
-  set burned-trees burned-trees + 1
+
 end
 
 ;; achieve fading color effect for the fire as it burns
@@ -395,7 +398,7 @@ AirTemperature
 AirTemperature
 -10
 40
-23.0
+34.0
 1
 1
 ºC
@@ -410,7 +413,7 @@ WindSpeed
 WindSpeed
 0
 50
-25.0
+7.0
 1
 1
 m/s
@@ -425,7 +428,7 @@ WindDirection
 WindDirection
 -179
 180
-180.0
+55.0
 1
 1
 º from North
@@ -440,7 +443,7 @@ Humidity
 Humidity
 0
 100
-13.0
+26.0
 1
 1
 %
@@ -505,24 +508,24 @@ fire-spread-rate-S
 11
 
 MONITOR
-198
-534
-384
-579
-Percent of Houses Burned
-(burned-houses / initial-houses)\n* 100
-1
+191
+562
+296
+607
+Burned Roads
+(burned-roads / initial-roads) * 100
+2
 1
 11
 
 MONITOR
-399
-534
-564
-579
-Percent of road burned
-(burned-roads / initial-roads)\n* 100
-1
+353
+568
+466
+613
+Burned houses
+(burned-houses / initial-houses) * 100
+2
 1
 11
 
