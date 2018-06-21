@@ -116,14 +116,14 @@ to setup
   set fire-spread-rate-S calculateWindSpread(180)
   set fire-spread-rate-SE calculateWindSpread(135)
   set fire-spread-rate-SW calculateWindSpread(-135)
-  set fire-spread-rate-W calculateWindSpread(-45)
+  set fire-spread-rate-W calculateWindSpread(-90)
   set fire-spread-rate-E calculateWindSpread(90)
 
   reset-ticks
 end
 
 to-report calculateWindSpread [angle]
-  report fire-spread-rate * ( (1 - ellipseEccentricity) / (1 - ellipseEccentricity * cos ( angle - WindDirection )) )
+  report fire-spread-rate * ( (1 - ellipseEccentricity) / (1 - ellipseEccentricity * cos ( WindDirection - angle  )) )
 end
 
 to go
@@ -413,7 +413,7 @@ WindSpeed
 WindSpeed
 0
 50
-7.0
+5.0
 1
 1
 m/s
@@ -428,7 +428,7 @@ WindDirection
 WindDirection
 -179
 180
-55.0
+90.0
 1
 1
 º from North
@@ -480,7 +480,7 @@ MONITOR
 133
 509
 ellipseLTW
-ellipseLTW
+ellipseEccentricity
 17
 1
 11
@@ -488,10 +488,10 @@ ellipseLTW
 MONITOR
 1063
 148
-1183
+1192
 193
-FIreSpreadNorth
-fire-spread-rate-N
+NorthEast Spread
+fire-spread-rate-NE
 17
 1
 11
@@ -499,10 +499,10 @@ fire-spread-rate-N
 MONITOR
 1062
 205
-1185
+1198
 250
-FireSpreadSouth
-fire-spread-rate-S
+South East Spread
+fire-spread-rate-SE
 17
 1
 11
@@ -526,6 +526,17 @@ MONITOR
 Burned houses
 (burned-houses / initial-houses) * 100
 2
+1
+11
+
+MONITOR
+1066
+273
+1159
+318
+East spread
+fire-spread-rate-E
+17
 1
 11
 
