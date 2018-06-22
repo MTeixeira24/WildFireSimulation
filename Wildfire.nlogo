@@ -20,12 +20,15 @@ globals [
   drought-factor
   varY
   fuelWeightPerPatch
-  initial-roads
   initial-houses
-  burned-roads
   burned-houses
 ]
-
+;;100m2
+;;casas de 2 ou 3 ou 4
+;;explorar com o número de linhas limpas.
+;;Embers fligh with the wind
+;;habitação e custo de limpeza.
+;;clean ainda têm combustivel
 breed [fires fire]    ;; bright red turtles -- the leading edge of the fire
 breed [embers ember]  ;; turtles gradually fading from red to near black
 
@@ -37,13 +40,13 @@ to setup
   ;; make some green trees
   ask patches with [(random-float 100) < density]
     [ set pcolor green ]
-  set fuelWeightPerPatch fuelWeight * 10000 ;; Each patch is 10 km2 in area which is equal to 10000 ha.
+  set fuelWeightPerPatch fuelWeight * 10 ;; Convert to kg/100m2
   ask patches with [ pcolor = green ] [ set fuel fuelWeightPerPatch ]
   ask patches with [ pcolor != green ] [
     set pcolor green - 4
-    set fuel fuelWeightPerPatch / 2 ;;Arbitrary value
+    set fuel 28 ;;kg/100m2 0.2802 kg/m2 source https://journals.uair.arizona.edu/index.php/jrm/article/viewFile/4316/3927
   ]
-  foreach [20 35] [
+  foreach [20 30] [
     x -> foreach [20 32 44 56] [
       y -> ask patches with [ pxcor > x AND pxcor < x + 10 AND pycor > y AND pycor < y + 10 ] [
         set pcolor yellow
@@ -51,18 +54,12 @@ to setup
       ]
     ]
   ]
-  ask patches with [ pxcor >= 30 AND pxcor <= 35 ] [
-    set pcolor gray
-    set landscape "road"
-  ]
 ;; set tree counts
   set initial-trees count patches with [pcolor = green]
-  set initial-roads count patches with [landscape = "road"]
   set initial-houses count patches with [landscape = "house"]
   set burned-trees 0
   set burned-houses 0
-  set burned-roads 0
-  ask one-of patches with [pcolor = green][
+  ask patches with [pxcor  = xcoord AND pycor = ycoord][
     ignite
     ask neighbors4 [ignite]
   ]
@@ -122,8 +119,8 @@ to setup
   reset-ticks
 end
 
-to-report calculateWindSpread [angle]
-  report fire-spread-rate * ( (1 - ellipseEccentricity) / (1 - ellipseEccentricity * cos ( WindDirection - angle  )) )
+to-report calculateWindSpread [angle] ;converted to m/s
+  report (fire-spread-rate * ( (1 - ellipseEccentricity) / (1 - ellipseEccentricity * cos ( WindDirection - angle  )) )) * (10 / 36)
 end
 
 to go
@@ -149,11 +146,11 @@ to go
     if spreadSW > 5 [ ask patches at-points [[-1 -1]]  [ if pcolor != black  [ignite] ] ]
     if spreadSE > 5 [ ask patches at-points [[1 -1]]  [ if pcolor != black [ignite] ] ]
     ask patch-at 0 0 [
-      set fuel fuel - 1000 ;; decrement the fuel available at the patch. Number is arbitrary, need to find a better function
+      set fuel fuel - 0.11 ;; decrement the fuel available at the patch. Measurements of fuel burn rate, emissions and thermal efficiency from a domestic two-stage wood-fired hydronic heater
     ]
     let ftemp [fuel] of patch-at 0 0
     set color 10 + ( 5 * ( ftemp / fuelWeightPerPatch ) ) ;; Fade color
-    if ftemp < 10 [ die ] ;; kill turtle when the fuel weight is bellow 10
+    if ftemp < 1 [ die ] ;; kill turtle when the fuel weight is bellow 1
   ]
   ;ask fires [
   ;  [ ask neighbors4 with [pcolor = green]
@@ -169,7 +166,6 @@ to ignite  ;; patch procedure
     [ set color red ]
   if pcolor = green [set burned-trees burned-trees + 1]
   if pcolor = yellow [set burned-houses burned-houses + 1]
-  if pcolor = gray [set burned-roads burned-roads + 1]
   set pcolor black
 
 end
@@ -428,7 +424,7 @@ WindDirection
 WindDirection
 -179
 180
-90.0
+34.0
 1
 1
 º from North
@@ -458,7 +454,7 @@ FuelWeight
 FuelWeight
 0
 100
-18.0
+9.0
 1
 1
 tonnes/ha
@@ -536,6 +532,39 @@ MONITOR
 318
 East spread
 fire-spread-rate-E
+17
+1
+11
+
+INPUTBOX
+977
+43
+1032
+103
+xcoord
+-1.0
+1
+0
+Number
+
+INPUTBOX
+1043
+43
+1095
+103
+ycoord
+20.0
+1
+0
+Number
+
+MONITOR
+1104
+355
+1245
+400
+DamagesHabitation
+burned-houses
 17
 1
 11
