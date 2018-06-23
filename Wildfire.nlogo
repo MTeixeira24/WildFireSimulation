@@ -22,6 +22,9 @@ globals [
   fuelWeightPerPatch
   initial-houses
   burned-houses
+  treeColor
+  grassColor
+  clearColor
 ]
 ;;100m2
 ;;casas de 2 ou 3 ou 4
@@ -29,6 +32,7 @@ globals [
 ;;Embers fligh with the wind
 ;;habitação e custo de limpeza.
 ;;clean ainda têm combustivel
+;; 4000m2 area limpa
 breed [fires fire]    ;; bright red turtles -- the leading edge of the fire
 breed [embers ember]  ;; turtles gradually fading from red to near black
 
@@ -36,26 +40,45 @@ turtles-own [spreadNW spreadNorth spreadNE spreadEast spreadSE spreadSouth sprea
 patches-own [fuel landscape]
 to setup
   clear-all
+  set treeColor green - 1
+  set grassColor green
+  set clearColor green + 2
   set-default-shape turtles "square"
   ;; make some green trees
   ask patches with [(random-float 100) < density]
-    [ set pcolor green ]
+    [ set pcolor treeColor ]
   set fuelWeightPerPatch fuelWeight * 10 ;; Convert to kg/100m2
-  ask patches with [ pcolor = green ] [ set fuel fuelWeightPerPatch ]
-  ask patches with [ pcolor != green ] [
-    set pcolor green - 4
-    set fuel 28 ;;kg/100m2 0.2802 kg/m2 source https://journals.uair.arizona.edu/index.php/jrm/article/viewFile/4316/3927
-  ]
-  foreach [20 30] [
-    x -> foreach [20 32 44 56] [
-      y -> ask patches with [ pxcor > x AND pxcor < x + 10 AND pycor > y AND pycor < y + 10 ] [
+  ask patches with [ pcolor = treeColor ] [ set fuel fuelWeightPerPatch ]
+  foreach [20 25 30 35 40] [
+    x -> foreach [20 25 30 35] [
+      y -> ask patches with [ pxcor = x AND pycor = y ] [
         set pcolor yellow
         set landscape "house"
+        ask neighbors [
+          set pcolor clearColor
+          set fuel 14
+        ]
       ]
     ]
   ]
+  foreach [23 28 33 38 43] [
+    x -> foreach [22 27 32] [
+      y -> ask patches with [ pxcor = x AND pycor = y ] [
+        set pcolor yellow
+        set landscape "house"
+        ask neighbors [
+          set pcolor clearColor
+          set fuel 3
+        ]
+      ]
+    ]
+  ]
+  ask patches with [ pcolor < treeColor AND pcolor != yellow] [
+    set pcolor grassColor
+    set fuel 28 ;;kg/100m2 0.2802 kg/m2 source https://journals.uair.arizona.edu/index.php/jrm/article/viewFile/4316/3927
+  ]
 ;; set tree counts
-  set initial-trees count patches with [pcolor = green]
+  set initial-trees count patches with [pcolor = treeColor]
   set initial-houses count patches with [landscape = "house"]
   set burned-trees 0
   set burned-houses 0
@@ -146,7 +169,7 @@ to go
     if spreadSW > 5 [ ask patches at-points [[-1 -1]]  [ if pcolor != black  [ignite] ] ]
     if spreadSE > 5 [ ask patches at-points [[1 -1]]  [ if pcolor != black [ignite] ] ]
     ask patch-at 0 0 [
-      set fuel fuel - 0.11 ;; decrement the fuel available at the patch. Measurements of fuel burn rate, emissions and thermal efficiency from a domestic two-stage wood-fired hydronic heater
+      set fuel fuel - 0.12 ;; decrement the fuel available at the patch. Measurements of fuel burn rate, emissions and thermal efficiency from a domestic two-stage wood-fired hydronic heater
     ]
     let ftemp [fuel] of patch-at 0 0
     set color 10 + ( 5 * ( ftemp / fuelWeightPerPatch ) ) ;; Fade color
@@ -164,7 +187,7 @@ end
 to ignite  ;; patch procedure
   sprout-fires 1
     [ set color red ]
-  if pcolor = green [set burned-trees burned-trees + 1]
+  if pcolor = treeColor [set burned-trees burned-trees + 1]
   if pcolor = yellow [set burned-houses burned-houses + 1]
   set pcolor black
 
@@ -409,7 +432,7 @@ WindSpeed
 WindSpeed
 0
 50
-5.0
+3.0
 1
 1
 m/s
@@ -439,7 +462,7 @@ Humidity
 Humidity
 0
 100
-26.0
+20.0
 1
 1
 %
@@ -454,7 +477,7 @@ FuelWeight
 FuelWeight
 0
 100
-9.0
+14.0
 1
 1
 tonnes/ha
@@ -500,28 +523,6 @@ MONITOR
 South East Spread
 fire-spread-rate-SE
 17
-1
-11
-
-MONITOR
-191
-562
-296
-607
-Burned Roads
-(burned-roads / initial-roads) * 100
-2
-1
-11
-
-MONITOR
-353
-568
-466
-613
-Burned houses
-(burned-houses / initial-houses) * 100
-2
 1
 11
 
