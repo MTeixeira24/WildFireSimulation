@@ -2,6 +2,7 @@ globals [
   initial-trees   ;; how many trees (green patches) we started with
   burned-trees    ;; how many have burned so far
   fire-spread-rate ;; Rate of spread of the fire
+  fire-spread-rate-grass
   fire-spread-rate-wind
   fire-spread-rate-theta
   ellipseLTW
@@ -16,6 +17,7 @@ globals [
   fire-spread-rate-W
   fire-spread-rate-E
   fire-danger-index
+  fire-danger-index-grass
   fuel-moisture-content
   drought-factor
   varY
@@ -25,6 +27,7 @@ globals [
   treeColor
   grassColor
   clearColor
+  fuelWeightPerPatchGrass
 ]
 ;;100m2
 ;;casas de 2 ou 3 ou 4
@@ -43,6 +46,7 @@ to setup
   set treeColor green - 1
   set grassColor green
   set clearColor green + 2
+  set fuelWeightPerPatchGrass 28 ;;kg/100m2 0.2802 kg/m2 source https://journals.uair.arizona.edu/index.php/jrm/article/viewFile/4316/3927
   set-default-shape turtles "square"
   ;; make some green trees
   ask patches with [(random-float 100) < density]
@@ -56,7 +60,7 @@ to setup
         set landscape "house"
         ask neighbors [
           set pcolor clearColor
-          set fuel 14
+          set fuel clearFuel
         ]
       ]
     ]
@@ -68,14 +72,15 @@ to setup
         set landscape "house"
         ask neighbors [
           set pcolor clearColor
-          set fuel 3
+          set fuel clearFuel
         ]
       ]
     ]
   ]
   ask patches with [ pcolor < treeColor AND pcolor != yellow] [
     set pcolor grassColor
-    set fuel 28 ;;kg/100m2 0.2802 kg/m2 source https://journals.uair.arizona.edu/index.php/jrm/article/viewFile/4316/3927
+    set landscape "grass"
+    set fuel fuelWeightPerPatchGrass
   ]
 ;; set tree counts
   set initial-trees count patches with [pcolor = treeColor]
@@ -101,24 +106,20 @@ to setup
 
   ;; Calculating Fire Danger Index
   ;; Area = grassland
-  ifelse Area = "grassland"
-  [ifelse fuel-moisture-content < 18
+  ifelse fuel-moisture-content < 18
     ;; fuel-moisture-content < 18
-    [set fire-danger-index (3.35 * FuelWeight * (e ^ (-0.0987 * fuel-moisture-content + 0.0403 * WindSpeed)))]
+    [set fire-danger-index-grass (3.35 * FuelWeight * (e ^ (-0.0987 * fuel-moisture-content + 0.0403 * WindSpeed)))]
     ;; 18 <= fuel-moisture-content < 30
     [ifelse fuel-moisture-content < 30
-      [set fire-danger-index (0.299 * FuelWeight * (e ^ ((-1.686 + 0.0403 * WindSpeed) * (30 * fuel-moisture-content))))]
+      [set fire-danger-index-grass (0.299 * FuelWeight * (e ^ ((-1.686 + 0.0403 * WindSpeed) * (30 * fuel-moisture-content))))]
       ;; fuel-moisture-content >= 30
-      [set fire-danger-index (2.0 * FuelWeight * e ^ (-23.6 + 5.01 * ln (DegreeCuring) + 0.0281 * AirTemperature - 0.226 * sqrt (Humidity) + 0.633 * sqrt (WindSpeed)))]]]
+      [set fire-danger-index-grass (2.0 * FuelWeight * e ^ (-23.6 + 5.01 * ln (DegreeCuring) + 0.0281 * AirTemperature - 0.226 * sqrt (Humidity) + 0.633 * sqrt (WindSpeed)))]]
   ;; Area = forest
-  [set fire-danger-index (1.25 * drought-factor * e ^ (((AirTemperature - Humidity) / (20.0)) + 0.0234 * WindSpeed))]
+  set fire-danger-index (1.25 * drought-factor * e ^ (((AirTemperature - Humidity) / (20.0)) + 0.0234 * WindSpeed))
 
   ;; Calculating Fire Spread Rate
-  ifelse Area = "grassland"
-  ;; Area = grassland
-  [set fire-spread-rate (0.13 * fire-danger-index)]
-  ;; Area = forest
-  [set fire-spread-rate (0.0012 * fire-danger-index * fuelWeight)]
+  set fire-spread-rate-grass (0.13 * fire-danger-index)
+  set fire-spread-rate (0.0012 * fire-danger-index * fuelWeight)
 
   ;;Calculating fire spread in the presence of wind
   ;set ellipseLTW  ( 0.936 * e ^ (50.5 * WindSpeed) ) + ( 0.461 * e ^ (-30.5 * WindSpeed) ) - 0.397
@@ -130,34 +131,30 @@ to setup
   set thetaAngle 20 ; RANDOM VALUE FOR TESTING
   set fire-spread-rate-theta fire-spread-rate * ( (1 - ellipseEccentricity) / (1 - ellipseEccentricity * cos thetaAngle) )
 
-  set fire-spread-rate-N calculateWindSpread(0)
-  set fire-spread-rate-NE calculateWindSpread(45)
-  set fire-spread-rate-NW calculateWindSpread(-45)
-  set fire-spread-rate-S calculateWindSpread(180)
-  set fire-spread-rate-SE calculateWindSpread(135)
-  set fire-spread-rate-SW calculateWindSpread(-135)
-  set fire-spread-rate-W calculateWindSpread(-90)
-  set fire-spread-rate-E calculateWindSpread(90)
+  set fire-spread-rate-N calculateWindSpread 0
+  set fire-spread-rate-NE calculateWindSpread 45
+  set fire-spread-rate-NW calculateWindSpread -45
+  set fire-spread-rate-S calculateWindSpread 180
+  set fire-spread-rate-SE calculateWindSpread 135
+  set fire-spread-rate-SW calculateWindSpread -135
+  set fire-spread-rate-W calculateWindSpread -90
+  set fire-spread-rate-E calculateWindSpread 90
 
   reset-ticks
 end
 
 to-report calculateWindSpread [angle] ;converted to m/s
-  report (fire-spread-rate * ( (1 - ellipseEccentricity) / (1 - ellipseEccentricity * cos ( WindDirection - angle  )) )) * (10 / 36)
+  let aux (1 - ellipseEccentricity) / (1 - ellipseEccentricity * cos ( WindDirection - angle  ))
+  let forestSpread (fire-spread-rate * ( aux )) * (10 / 36)
+  let grassSpread (fire-spread-rate-grass * ( aux )) * (10 / 36)
+  report list ( forestSpread ) ( grassSpread )
 end
 
 to go
   if not any? turtles  ;; either fires or embers
     [ stop ]
   ask fires
-  [ set spreadNorth spreadNorth + fire-spread-rate-N
-    set spreadSouth spreadSouth + fire-spread-rate-S
-    set spreadEast spreadEast + fire-spread-rate-E
-    set spreadWest spreadWest + fire-spread-rate-W
-    set spreadNE spreadNE + fire-spread-rate-NE
-    set spreadSE spreadSE + fire-spread-rate-SE
-    set spreadNW spreadNW + fire-spread-rate-NW
-    set spreadSW spreadSW + fire-spread-rate-SW ]
+  [ spread ]
   ask fires ;; checks if fire has spreaded outside of its area
   [
     if spreadNorth > 5 [ ask patches at-points [[0 1]]  [ if pcolor != black  [ignite] ] ]
@@ -172,7 +169,9 @@ to go
       set fuel fuel - 0.12 ;; decrement the fuel available at the patch. Measurements of fuel burn rate, emissions and thermal efficiency from a domestic two-stage wood-fired hydronic heater
     ]
     let ftemp [fuel] of patch-at 0 0
-    set color 10 + ( 5 * ( ftemp / fuelWeightPerPatch ) ) ;; Fade color
+    ifelse landscape = "grass"
+    [set color 10 + ( 5 * ( ftemp / fuelWeightPerPatchGrass ) )]
+    [set color 10 + ( 5 * ( ftemp / fuelWeightPerPatch ) )];; Fade color
     if ftemp < 1 [ die ] ;; kill turtle when the fuel weight is bellow 1
   ]
   ;ask fires [
@@ -180,7 +179,9 @@ to go
   ;      [ ignite ]
   ;    set breed embers ]
   fade-embers
-  tick
+  ifelse ticks < ticklimit
+  [tick]
+  [stop]
 end
 
 ;; creates the fire turtles
@@ -201,6 +202,30 @@ to fade-embers
         [ set pcolor color
           die ] ]
 end
+
+
+to spread
+  ifelse landscape = "grass"[
+    set spreadNorth spreadNorth + last fire-spread-rate-N
+    set spreadSouth spreadSouth + last fire-spread-rate-S
+    set spreadEast spreadEast + last fire-spread-rate-E
+    set spreadWest spreadWest + last fire-spread-rate-W
+    set spreadNE spreadNE + last fire-spread-rate-NE
+    set spreadSE spreadSE + last fire-spread-rate-SE
+    set spreadNW spreadNW + last fire-spread-rate-NW
+    set spreadSW spreadSW + last fire-spread-rate-SW
+  ][
+    set spreadNorth spreadNorth + first fire-spread-rate-N
+    set spreadSouth spreadSouth + first fire-spread-rate-S
+    set spreadEast spreadEast + first fire-spread-rate-E
+    set spreadWest spreadWest + first fire-spread-rate-W
+    set spreadNE spreadNE + first fire-spread-rate-NE
+    set spreadSE spreadSE + first fire-spread-rate-SE
+    set spreadNW spreadNW + first fire-spread-rate-NW
+    set spreadSW spreadSW + first fire-spread-rate-SW
+  ]
+end
+
 
 
 ; Copyright 1997 Uri Wilensky.
@@ -230,7 +255,7 @@ GRAPHICS-WINDOW
 1
 1
 1
-ticks
+Minutes
 30.0
 
 BUTTON
@@ -342,7 +367,7 @@ density
 density
 0.0
 99.0
-59.0
+50.0
 1.0
 1
 %
@@ -357,7 +382,7 @@ DegreeCuring
 DegreeCuring
 0
 100
-40.0
+60.0
 1
 1
 %
@@ -372,7 +397,7 @@ Precipitation
 Precipitation
 0
 200
-30.0
+25.0
 1
 1
 mm
@@ -417,7 +442,7 @@ AirTemperature
 AirTemperature
 -10
 40
-34.0
+25.0
 1
 1
 ºC
@@ -432,7 +457,7 @@ WindSpeed
 WindSpeed
 0
 50
-3.0
+4.0
 1
 1
 m/s
@@ -447,7 +472,7 @@ WindDirection
 WindDirection
 -179
 180
-34.0
+90.0
 1
 1
 º from North
@@ -477,21 +502,11 @@ FuelWeight
 FuelWeight
 0
 100
-14.0
+13.0
 1
 1
 tonnes/ha
 HORIZONTAL
-
-CHOOSER
-760
-460
-950
-505
-Area
-Area
-"grassland" "forest"
-1
 
 MONITOR
 62
@@ -500,39 +515,6 @@ MONITOR
 509
 ellipseLTW
 ellipseEccentricity
-17
-1
-11
-
-MONITOR
-1063
-148
-1192
-193
-NorthEast Spread
-fire-spread-rate-NE
-17
-1
-11
-
-MONITOR
-1062
-205
-1198
-250
-South East Spread
-fire-spread-rate-SE
-17
-1
-11
-
-MONITOR
-1066
-273
-1159
-318
-East spread
-fire-spread-rate-E
 17
 1
 11
@@ -569,6 +551,68 @@ burned-houses
 17
 1
 11
+
+PLOT
+853
+509
+1053
+659
+Active Fires
+Minutes
+100m2
+0.0
+10.0
+0.0
+10.0
+true
+false
+"" ""
+PENS
+"default" 1.0 0 -2674135 true "" "plot count turtles"
+
+INPUTBOX
+759
+457
+827
+517
+tickLimit
+2500.0
+1
+0
+Number
+
+PLOT
+1087
+519
+1287
+669
+Burn percentage
+NIL
+NIL
+0.0
+10.0
+0.0
+10.0
+true
+false
+"" ""
+PENS
+"default" 1.0 0 -16777216 true "" "plot (burned-trees / initial-trees) * 100"
+
+SLIDER
+986
+123
+1158
+156
+clearFuel
+clearFuel
+0
+14
+8.0
+1
+1
+kg/m2
+HORIZONTAL
 
 @#$#@#$#@
 ## WHAT IS IT?
