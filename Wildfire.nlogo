@@ -51,32 +51,36 @@ to setup
   ;; make some green trees
   ask patches with [(random-float 100) < density]
     [ set pcolor treeColor ]
+  if drawHabitation [
+    foreach [20 25 30 35 40] [
+      x -> foreach [20 25 30 35] [
+        y -> ask patches with [ pxcor = x AND pycor = y ] [
+          set pcolor yellow
+          set landscape "house"
+          ask neighbors [
+            set landscape "grass"
+            set pcolor clearColor
+            set fuel clearFuel
+          ]
+        ]
+      ]
+    ]
+    foreach [23 28 33 38 43] [
+      x -> foreach [22 27 32] [
+        y -> ask patches with [ pxcor = x AND pycor = y ] [
+          set pcolor yellow
+          set landscape "house"
+          ask neighbors [
+            set landscape "grass"
+            set pcolor clearColor
+            set fuel clearFuel
+          ]
+        ]
+      ]
+    ]
+  ]
   set fuelWeightPerPatch fuelWeight * 10 ;; Convert to kg/100m2
   ask patches with [ pcolor = treeColor ] [ set fuel fuelWeightPerPatch ]
-  foreach [20 25 30 35 40] [
-    x -> foreach [20 25 30 35] [
-      y -> ask patches with [ pxcor = x AND pycor = y ] [
-        set pcolor yellow
-        set landscape "house"
-        ask neighbors [
-          set pcolor clearColor
-          set fuel clearFuel
-        ]
-      ]
-    ]
-  ]
-  foreach [23 28 33 38 43] [
-    x -> foreach [22 27 32] [
-      y -> ask patches with [ pxcor = x AND pycor = y ] [
-        set pcolor yellow
-        set landscape "house"
-        ask neighbors [
-          set pcolor clearColor
-          set fuel clearFuel
-        ]
-      ]
-    ]
-  ]
   ask patches with [ pcolor < treeColor AND pcolor != yellow] [
     set pcolor grassColor
     set landscape "grass"
@@ -397,7 +401,7 @@ Precipitation
 Precipitation
 0
 200
-25.0
+22.0
 1
 1
 mm
@@ -412,7 +416,7 @@ DaysSinceRain
 DaysSinceRain
 0
 5
-2.0
+4.0
 1
 1
 days
@@ -427,7 +431,7 @@ KeetchByramDroughIndex
 KeetchByramDroughIndex
 0
 200
-50.0
+21.0
 1
 1
 mm
@@ -472,7 +476,7 @@ WindDirection
 WindDirection
 -179
 180
-90.0
+180.0
 1
 1
 º from North
@@ -487,7 +491,7 @@ Humidity
 Humidity
 0
 100
-20.0
+25.0
 1
 1
 %
@@ -525,7 +529,7 @@ INPUTBOX
 1032
 103
 xcoord
--1.0
+30.0
 1
 0
 Number
@@ -536,7 +540,7 @@ INPUTBOX
 1095
 103
 ycoord
-20.0
+70.0
 1
 0
 Number
@@ -576,7 +580,7 @@ INPUTBOX
 827
 517
 tickLimit
-2500.0
+10000.0
 1
 0
 Number
@@ -608,11 +612,22 @@ clearFuel
 clearFuel
 0
 14
-8.0
+9.0
 1
 1
 kg/m2
 HORIZONTAL
+
+SWITCH
+986
+178
+1152
+211
+drawHabitation
+drawHabitation
+0
+1
+-1000
 
 @#$#@#$#@
 ## WHAT IS IT?
