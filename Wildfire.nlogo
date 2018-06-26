@@ -1,3 +1,5 @@
+extensions [ gis ]
+
 globals [
   initial-trees   ;; how many trees (green patches) we started with
   burned-trees    ;; how many have burned so far
@@ -33,6 +35,7 @@ globals [
   precipitations
   humidities
   winds
+  elevation slope aspect
 ]
 ;;100m2
 ;;casas de 2 ou 3 ou 4
@@ -118,6 +121,34 @@ to setup
   print humidities
   print winds
   file-close-all
+
+  ; elevations
+  set elevation gis:load-dataset "data/local-elevation.asc"
+  gis:set-world-envelope gis:envelope-of elevation
+  let horizontal-gradient gis:convolve elevation 3 3 [ 1 1 1 0 0 0 -1 -1 -1 ] 1 1
+  let vertical-gradient gis:convolve elevation 3 3 [ 1 0 -1 1 0 -1 1 0 -1 ] 1 1
+  set slope gis:create-raster gis:width-of elevation gis:height-of elevation gis:envelope-of elevation
+  set aspect gis:create-raster gis:width-of elevation gis:height-of elevation gis:envelope-of elevation
+  let x 0
+  repeat (gis:width-of slope)
+  [ let y 0
+    repeat (gis:height-of slope)
+    [ let gx gis:raster-value horizontal-gradient x y
+      let gy gis:raster-value vertical-gradient x y
+      if ((gx <= 0) or (gx >= 0)) and ((gy <= 0) or (gy >= 0))
+      [ let s sqrt ((gx * gx) + (gy * gy))
+        gis:set-raster-value slope x y s
+        ifelse (gx != 0) or (gy != 0)
+        [ gis:set-raster-value aspect x y atan gy gx ]
+        [ gis:set-raster-value aspect x y 0 ] ]
+      set y y + 1 ]
+    set x x + 1 ]
+  gis:set-sampling-method aspect "bilinear"
+
+  print gis:raster-value slope 2 2
+  print gis:raster-value elevation 1 0
+
+
 
   reset-ticks
 end
@@ -459,7 +490,7 @@ DegreeCuring
 DegreeCuring
 0
 100
-82.0
+87.0
 1
 1
 %
@@ -474,7 +505,7 @@ Precipitation
 Precipitation
 0
 200
-0.06
+0.155
 1
 1
 mm
@@ -504,7 +535,7 @@ KeetchByramDroughIndex
 KeetchByramDroughIndex
 0
 200
-38.0
+40.0
 1
 1
 mm
@@ -519,7 +550,7 @@ AirTemperature
 AirTemperature
 -10
 40
-19.013000000000034
+17.230000000000018
 1
 1
 ºC
@@ -534,7 +565,7 @@ WindSpeed
 WindSpeed
 0
 50
-1.52
+1.36
 1
 1
 m/s
@@ -549,7 +580,7 @@ WindDirection
 WindDirection
 -179
 180
--77.995
+-94.99700000000001
 1
 1
 º from North
@@ -564,7 +595,7 @@ Humidity
 Humidity
 0
 100
-83.0
+91.0
 1
 1
 %
@@ -602,7 +633,7 @@ INPUTBOX
 1032
 103
 xcoord
-30.0
+0.0
 1
 0
 Number
@@ -613,7 +644,7 @@ INPUTBOX
 1095
 103
 ycoord
-70.0
+0.0
 1
 0
 Number
@@ -685,7 +716,7 @@ clearFuel
 clearFuel
 0
 14
-9.0
+0.0
 1
 1
 kg/m2
@@ -1114,7 +1145,7 @@ false
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 @#$#@#$#@
-NetLogo 6.0.3
+NetLogo 6.0.4
 @#$#@#$#@
 set density 60.0
 setup
