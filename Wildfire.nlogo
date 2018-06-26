@@ -268,7 +268,7 @@ to calculate
       ;; fuel-moisture-content >= 30
       [set fire-danger-index-grass (2.0 * FuelWeight * e ^ (-23.6 + 5.01 * ln (DegreeCuring) + 0.0281 * AirTemperature - 0.226 * sqrt (Humidity) + 0.633 * sqrt (WindSpeed)))]]
   ;; Area = forest
-  set fire-danger-index (1.25 * drought-factor * e ^ (((AirTemperature - Humidity) / (20.0)) + 0.0234 * WindSpeed))
+  set fire-danger-index (1.25 * drought-factor * e ^ (((AirTemperature -  ( Humidity / 100) ) / (20.0)) + 0.0234 * WindSpeed))
 
   ;; Calculating Fire Spread Rate
   set fire-spread-rate-grass (0.13 * fire-danger-index)
@@ -444,7 +444,7 @@ density
 density
 0.0
 99.0
-85.0
+54.0
 1.0
 1
 %
@@ -459,7 +459,7 @@ DegreeCuring
 DegreeCuring
 0
 100
-82.0
+51.0
 1
 1
 %
@@ -474,7 +474,7 @@ Precipitation
 Precipitation
 0
 200
-0.06
+0.0
 1
 1
 mm
@@ -519,7 +519,7 @@ AirTemperature
 AirTemperature
 -10
 40
-19.013000000000034
+20.985000000000014
 1
 1
 ºC
@@ -534,7 +534,7 @@ WindSpeed
 WindSpeed
 0
 50
-1.52
+1.51
 1
 1
 m/s
@@ -549,7 +549,7 @@ WindDirection
 WindDirection
 -179
 180
--77.995
+-69.49900000000002
 1
 1
 º from North
@@ -564,7 +564,7 @@ Humidity
 Humidity
 0
 100
-83.0
+74.0
 1
 1
 %
@@ -602,7 +602,7 @@ INPUTBOX
 1032
 103
 xcoord
-30.0
+70.0
 1
 0
 Number
@@ -613,7 +613,7 @@ INPUTBOX
 1095
 103
 ycoord
-70.0
+0.0
 1
 0
 Number
@@ -631,9 +631,9 @@ burned-houses
 
 PLOT
 853
-509
+533
 1053
-659
+683
 Active Fires
 Minutes
 100m2
@@ -653,7 +653,7 @@ INPUTBOX
 827
 517
 tickLimit
-10000.0
+20000.0
 1
 0
 Number
@@ -698,7 +698,7 @@ SWITCH
 211
 drawHabitation
 drawHabitation
-0
+1
 1
 -1000
 
@@ -737,10 +737,28 @@ INPUTBOX
 1105
 521
 ConfigurationFile
-configs/Porto_PT_2018-06-26 03_00_00
+configs/Tondela_PT_2018-06-26 21_00_00
 1
 0
 String
+
+PLOT
+258
+551
+458
+701
+Wind Speed
+NIL
+NIL
+0.0
+10.0
+0.0
+7.0
+true
+false
+"" ""
+PENS
+"default" 1.0 0 -16777216 true "" "plot WindSpeed"
 
 @#$#@#$#@
 ## WHAT IS IT?
