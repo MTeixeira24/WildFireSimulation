@@ -28,6 +28,11 @@ globals [
   grassColor
   clearColor
   fuelWeightPerPatchGrass
+  name
+  temperatures
+  precipitations
+  humidities
+  winds
 ]
 ;;100m2
 ;;casas de 2 ou 3 ou 4
@@ -95,7 +100,151 @@ to setup
     ignite
     ask neighbors4 [ignite]
   ]
-  ;; Calculating Fuel Moisture Content
+
+  calculate
+
+  if exportImages [
+    set-current-directory user-directory
+  ]
+
+  file-close-all
+  file-open ConfigurationFile
+  set temperatures file-read
+  set precipitations file-read
+  set humidities file-read
+  set winds file-read
+  print temperatures
+  print precipitations
+  print humidities
+  print winds
+  file-close-all
+
+  reset-ticks
+end
+
+to-report calculateWindSpread [angle] ;converted to m/s
+  let aux (1 - ellipseEccentricity) / (1 - ellipseEccentricity * cos ( WindDirection - angle  ))
+  let forestSpread (fire-spread-rate * ( aux )) * (10 / 36)
+  let grassSpread (fire-spread-rate-grass * ( aux )) * (10 / 36)
+  report list ( forestSpread ) ( grassSpread )
+end
+
+to go
+  ; update temperature
+  if ((ticks / 60) + 1) < (length temperatures) [
+    let prevTemp item (floor (ticks / 60)) temperatures
+    let nextTemp item (floor (ticks / 60) + 1) temperatures
+    set AirTemperature prevTemp + (nextTemp - prevTemp) * (ticks mod 60 / 60)
+  ]
+
+  ; update precipitation
+  if ((ticks / 60) + 1) < (length precipitations) [
+    let prevPrec item (floor (ticks / 60)) precipitations
+    let nextPrec item (floor (ticks / 60) + 1) precipitations
+    set Precipitation prevPrec + (nextPrec - prevPrec) * (ticks mod 60 / 60)
+  ]
+
+  ; update humidity
+  if ((ticks / 60) + 1) < (length humidities) [
+    let prevHum item (floor (ticks / 60)) humidities
+    let nextHum item (floor (ticks / 60) + 1) humidities
+    set Humidity prevHum + (nextHum - prevHum) * (ticks mod 60 / 60)
+  ]
+
+  ; update wind
+  if ((ticks / 60) + 1) < (length winds) [
+    let prevWind item (floor (ticks / 60)) winds
+    let nextWind item (floor (ticks / 60) + 1) winds
+    set WindSpeed item 0 prevWind + (item 0 nextWind - item 0 prevWind) * (ticks mod 60 / 60)
+    set WindDirection item 1 prevWind + (item 1 nextWind - item 1 prevWind) * (ticks mod 60 / 60)
+  ]
+
+  calculate
+
+  if not any? turtles  ;; either fires or embers
+    [ stop ]
+  ask fires
+  [ spread ]
+  ask fires ;; checks if fire has spreaded outside of its area
+  [
+    if spreadNorth > 5 [ ask patches at-points [[0 1]]  [ if pcolor != black  [ignite] ] ]
+    if spreadSouth > 5 [ ask patches at-points [[0 -1]]  [ if pcolor != black  [ignite] ] ]
+    if spreadWest > 5 [ ask patches at-points [[-1 0]]  [ if pcolor != black  [ignite] ] ]
+    if spreadEast > 5 [ ask patches at-points [[1 0]]  [ if pcolor != black  [ignite] ] ]
+    if spreadNW > 5 [ ask patches at-points [[-1 1]]  [ if pcolor != black   [ignite] ] ]
+    if spreadNE > 5 [ ask patches at-points [[1 1]]  [ if pcolor != black [ignite] ] ]
+    if spreadSW > 5 [ ask patches at-points [[-1 -1]]  [ if pcolor != black  [ignite] ] ]
+    if spreadSE > 5 [ ask patches at-points [[1 -1]]  [ if pcolor != black [ignite] ] ]
+    ask patch-at 0 0 [
+      set fuel fuel - 0.12 ;; decrement the fuel available at the patch. Measurements of fuel burn rate, emissions and thermal efficiency from a domestic two-stage wood-fired hydronic heater
+    ]
+    let ftemp [fuel] of patch-at 0 0
+    ifelse landscape = "grass"
+    [set color 10 + ( 5 * ( ftemp / fuelWeightPerPatchGrass ) )]
+    [set color 10 + ( 5 * ( ftemp / fuelWeightPerPatch ) )];; Fade color
+    if ftemp < 1 [ die ] ;; kill turtle when the fuel weight is bellow 1
+  ]
+  ;ask fires [
+  ;  [ ask neighbors4 with [pcolor = green]
+  ;      [ ignite ]
+  ;    set breed embers ]
+  fade-embers
+
+  if exportImages [
+    if ticks mod 60 = 0 [
+      write-current-state ticks / 60
+    ]
+  ]
+
+  ifelse ticks < ticklimit
+  [tick]
+  [stop]
+end
+
+;; creates the fire turtles
+to ignite  ;; patch procedure
+  sprout-fires 1
+    [ set color red ]
+  if pcolor = treeColor [set burned-trees burned-trees + 1]
+  if pcolor = yellow [set burned-houses burned-houses + 1]
+  set pcolor black
+
+end
+
+;; achieve fading color effect for the fire as it burns
+to fade-embers
+  ask embers
+    [ set color color - 0.3  ;; make red darker
+      if color < red - 3.5     ;; are we almost at black?
+        [ set pcolor color
+          die ] ]
+end
+
+
+to spread
+  ifelse landscape = "grass"[
+    set spreadNorth spreadNorth + last fire-spread-rate-N
+    set spreadSouth spreadSouth + last fire-spread-rate-S
+    set spreadEast spreadEast + last fire-spread-rate-E
+    set spreadWest spreadWest + last fire-spread-rate-W
+    set spreadNE spreadNE + last fire-spread-rate-NE
+    set spreadSE spreadSE + last fire-spread-rate-SE
+    set spreadNW spreadNW + last fire-spread-rate-NW
+    set spreadSW spreadSW + last fire-spread-rate-SW
+  ][
+    set spreadNorth spreadNorth + first fire-spread-rate-N
+    set spreadSouth spreadSouth + first fire-spread-rate-S
+    set spreadEast spreadEast + first fire-spread-rate-E
+    set spreadWest spreadWest + first fire-spread-rate-W
+    set spreadNE spreadNE + first fire-spread-rate-NE
+    set spreadSE spreadSE + first fire-spread-rate-SE
+    set spreadNW spreadNW + first fire-spread-rate-NW
+    set spreadSW spreadSW + first fire-spread-rate-SW
+  ]
+end
+
+to calculate
+    ;; Calculating Fuel Moisture Content
   set fuel-moisture-content ( ( ( 97.7 + 4.06 * Humidity  ) / ( AirTemperature + 6.0 ) ) - ( 0.00854 * Humidity   ) + ( 3000 / DegreeCuring  ) - ( 30 ) )
 
   ;; Calculating varY (for Forest terrain)
@@ -143,91 +292,15 @@ to setup
   set fire-spread-rate-SW calculateWindSpread -135
   set fire-spread-rate-W calculateWindSpread -90
   set fire-spread-rate-E calculateWindSpread 90
-
-  reset-ticks
 end
 
-to-report calculateWindSpread [angle] ;converted to m/s
-  let aux (1 - ellipseEccentricity) / (1 - ellipseEccentricity * cos ( WindDirection - angle  ))
-  let forestSpread (fire-spread-rate * ( aux )) * (10 / 36)
-  let grassSpread (fire-spread-rate-grass * ( aux )) * (10 / 36)
-  report list ( forestSpread ) ( grassSpread )
-end
-
-to go
-  if not any? turtles  ;; either fires or embers
-    [ stop ]
-  ask fires
-  [ spread ]
-  ask fires ;; checks if fire has spreaded outside of its area
-  [
-    if spreadNorth > 5 [ ask patches at-points [[0 1]]  [ if pcolor != black  [ignite] ] ]
-    if spreadSouth > 5 [ ask patches at-points [[0 -1]]  [ if pcolor != black  [ignite] ] ]
-    if spreadWest > 5 [ ask patches at-points [[-1 0]]  [ if pcolor != black  [ignite] ] ]
-    if spreadEast > 5 [ ask patches at-points [[1 0]]  [ if pcolor != black  [ignite] ] ]
-    if spreadNW > 5 [ ask patches at-points [[-1 1]]  [ if pcolor != black   [ignite] ] ]
-    if spreadNE > 5 [ ask patches at-points [[1 1]]  [ if pcolor != black [ignite] ] ]
-    if spreadSW > 5 [ ask patches at-points [[-1 -1]]  [ if pcolor != black  [ignite] ] ]
-    if spreadSE > 5 [ ask patches at-points [[1 -1]]  [ if pcolor != black [ignite] ] ]
-    ask patch-at 0 0 [
-      set fuel fuel - 0.12 ;; decrement the fuel available at the patch. Measurements of fuel burn rate, emissions and thermal efficiency from a domestic two-stage wood-fired hydronic heater
-    ]
-    let ftemp [fuel] of patch-at 0 0
-    ifelse landscape = "grass"
-    [set color 10 + ( 5 * ( ftemp / fuelWeightPerPatchGrass ) )]
-    [set color 10 + ( 5 * ( ftemp / fuelWeightPerPatch ) )];; Fade color
-    if ftemp < 1 [ die ] ;; kill turtle when the fuel weight is bellow 1
-  ]
-  ;ask fires [
-  ;  [ ask neighbors4 with [pcolor = green]
-  ;      [ ignite ]
-  ;    set breed embers ]
-  fade-embers
-  ifelse ticks < ticklimit
-  [tick]
-  [stop]
-end
-
-;; creates the fire turtles
-to ignite  ;; patch procedure
-  sprout-fires 1
-    [ set color red ]
-  if pcolor = treeColor [set burned-trees burned-trees + 1]
-  if pcolor = yellow [set burned-houses burned-houses + 1]
-  set pcolor black
-
-end
-
-;; achieve fading color effect for the fire as it burns
-to fade-embers
-  ask embers
-    [ set color color - 0.3  ;; make red darker
-      if color < red - 3.5     ;; are we almost at black?
-        [ set pcolor color
-          die ] ]
-end
-
-
-to spread
-  ifelse landscape = "grass"[
-    set spreadNorth spreadNorth + last fire-spread-rate-N
-    set spreadSouth spreadSouth + last fire-spread-rate-S
-    set spreadEast spreadEast + last fire-spread-rate-E
-    set spreadWest spreadWest + last fire-spread-rate-W
-    set spreadNE spreadNE + last fire-spread-rate-NE
-    set spreadSE spreadSE + last fire-spread-rate-SE
-    set spreadNW spreadNW + last fire-spread-rate-NW
-    set spreadSW spreadSW + last fire-spread-rate-SW
-  ][
-    set spreadNorth spreadNorth + first fire-spread-rate-N
-    set spreadSouth spreadSouth + first fire-spread-rate-S
-    set spreadEast spreadEast + first fire-spread-rate-E
-    set spreadWest spreadWest + first fire-spread-rate-W
-    set spreadNE spreadNE + first fire-spread-rate-NE
-    set spreadSE spreadSE + first fire-spread-rate-SE
-    set spreadNW spreadNW + first fire-spread-rate-NW
-    set spreadSW spreadSW + first fire-spread-rate-SW
-  ]
+to write-current-state [hour]
+  export-view (word hour ".png")
+  ;file-open (word hour)
+  ;ask patches
+  ;[ file-write pcolor ]
+  ;[ file-write extract-rgb pcolor ]
+  ;file-close-all
 end
 
 
@@ -371,7 +444,7 @@ density
 density
 0.0
 99.0
-50.0
+85.0
 1.0
 1
 %
@@ -386,7 +459,7 @@ DegreeCuring
 DegreeCuring
 0
 100
-60.0
+82.0
 1
 1
 %
@@ -401,7 +474,7 @@ Precipitation
 Precipitation
 0
 200
-22.0
+0.06
 1
 1
 mm
@@ -431,7 +504,7 @@ KeetchByramDroughIndex
 KeetchByramDroughIndex
 0
 200
-21.0
+38.0
 1
 1
 mm
@@ -446,7 +519,7 @@ AirTemperature
 AirTemperature
 -10
 40
-25.0
+19.013000000000034
 1
 1
 ºC
@@ -461,7 +534,7 @@ WindSpeed
 WindSpeed
 0
 50
-4.0
+1.52
 1
 1
 m/s
@@ -476,7 +549,7 @@ WindDirection
 WindDirection
 -179
 180
-180.0
+-77.995
 1
 1
 º from North
@@ -491,7 +564,7 @@ Humidity
 Humidity
 0
 100
-25.0
+83.0
 1
 1
 %
@@ -628,6 +701,46 @@ drawHabitation
 0
 1
 -1000
+
+SWITCH
+989
+227
+1122
+260
+exportImages
+exportImages
+1
+1
+-1000
+
+PLOT
+598
+531
+798
+681
+Temperature
+Minutes
+ºC
+0.0
+40.0
+0.0
+10.0
+true
+false
+"" ""
+PENS
+"default" 1.0 0 -16777216 true "" "plot AirTemperature"
+
+INPUTBOX
+854
+461
+1105
+521
+ConfigurationFile
+configs/Porto_PT_2018-06-26 03_00_00
+1
+0
+String
 
 @#$#@#$#@
 ## WHAT IS IT?
