@@ -32,7 +32,9 @@ if(process.argv.length === 3 || process.argv.length === 4) {
 			list.forEach(function(item){
 				for (var i = 0; i < 3; i++) { // information is not hourly, it is from 3 to 3 hours
 					temperatures.push(item.main.temp - 273.15); // Kelvin -> Celsius
-					precipitations.push(item.rain['3h'] ? item.rain['3h'] : 0); // Precipitation in mm [0 - 100]
+					if (item.rain) {
+						precipitations.push(item.rain['3h'] ? item.rain['3h'] : 0); // Precipitation in mm [0 - 100]
+					}
 					humidity.push(item.main.humidity); // Humidity in percentage [0 - 100]
 					wind.push([item.wind.speed, item.wind.deg > 180 ? item.wind.deg - 360 : item.wind.deg]); // Wind degrees from [0, 360] to [-180, 180]
 				}
