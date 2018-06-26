@@ -293,7 +293,7 @@ to calculate
 end
 
 to write-current-state [hour]
-  export-view (word hour ".png")
+  export-view (word "images/" hour ".png")
   ;file-open (word hour)
   ;ask patches
   ;[ file-write pcolor ]
