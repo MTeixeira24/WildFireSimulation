@@ -63,7 +63,6 @@ to setup
           set pcolor yellow
           set landscape "house"
           ask neighbors [
-            set landscape "grass"
             set pcolor clearColor
             set fuel clearFuel
           ]
@@ -76,7 +75,6 @@ to setup
           set pcolor yellow
           set landscape "house"
           ask neighbors [
-            set landscape "grass"
             set pcolor clearColor
             set fuel clearFuel
           ]
@@ -444,7 +442,7 @@ density
 density
 0.0
 99.0
-54.0
+70.0
 1.0
 1
 %
@@ -579,7 +577,7 @@ FuelWeight
 FuelWeight
 0
 100
-13.0
+7.0
 1
 1
 tonnes/ha
@@ -619,21 +617,21 @@ ycoord
 Number
 
 MONITOR
-1104
-355
-1245
-400
+977
+281
+1118
+326
 DamagesHabitation
-burned-houses
-17
+(burned-houses / initial-houses) * 100
+2
 1
 11
 
 PLOT
-853
-533
-1053
-683
+857
+525
+1057
+675
 Active Fires
 Minutes
 100m2
@@ -653,19 +651,19 @@ INPUTBOX
 827
 517
 tickLimit
-20000.0
+3500.0
 1
 0
 Number
 
 PLOT
-1087
-519
-1287
-669
+1063
+525
+1263
+675
 Burn percentage
-NIL
-NIL
+Minutes
+%
 0.0
 10.0
 0.0
@@ -677,24 +675,24 @@ PENS
 "default" 1.0 0 -16777216 true "" "plot (burned-trees / initial-trees) * 100"
 
 SLIDER
-986
+975
 123
-1158
+1147
 156
 clearFuel
 clearFuel
 0
 14
-9.0
+7.0
 1
 1
 kg/m2
 HORIZONTAL
 
 SWITCH
-986
+975
 178
-1152
+1141
 211
 drawHabitation
 drawHabitation
@@ -703,21 +701,21 @@ drawHabitation
 -1000
 
 SWITCH
-989
+978
 227
-1122
+1111
 260
 exportImages
 exportImages
-1
+0
 1
 -1000
 
 PLOT
-598
-531
-798
-681
+435
+526
+635
+676
 Temperature
 Minutes
 ºC
@@ -743,13 +741,13 @@ configs/Tondela_PT_2018-06-26 21_00_00
 String
 
 PLOT
-258
-551
-458
-701
+221
+526
+421
+676
 Wind Speed
-NIL
-NIL
+Minutes
+m/s
 0.0
 10.0
 0.0
@@ -759,6 +757,42 @@ false
 "" ""
 PENS
 "default" 1.0 0 -16777216 true "" "plot WindSpeed"
+
+PLOT
+646
+525
+846
+675
+Humidity
+Minutes
+%
+0.0
+10.0
+0.0
+10.0
+true
+false
+"" ""
+PENS
+"default" 1.0 0 -16777216 true "" "plot Humidity"
+
+PLOT
+16
+526
+216
+676
+Damaged Habitations
+Minutes
+%
+0.0
+10.0
+0.0
+10.0
+true
+false
+"" ""
+PENS
+"default" 1.0 0 -16777216 true "" "plot (burned-houses / initial-houses) * 100"
 
 @#$#@#$#@
 ## WHAT IS IT?
