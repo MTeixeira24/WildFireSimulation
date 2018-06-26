@@ -66,7 +66,6 @@ to setup
           set pcolor yellow
           set landscape "house"
           ask neighbors [
-            set landscape "grass"
             set pcolor clearColor
             set fuel clearFuel
           ]
@@ -79,7 +78,6 @@ to setup
           set pcolor yellow
           set landscape "house"
           ask neighbors [
-            set landscape "grass"
             set pcolor clearColor
             set fuel clearFuel
           ]
@@ -143,7 +141,6 @@ to setup
         [ gis:set-raster-value aspect x y 0 ] ]
       set y y + 1 ]
     set x x + 1 ]
-  gis:set-sampling-method aspect "bilinear"
 
   print gis:raster-value slope 2 2
   print gis:raster-value elevation 1 0
@@ -299,7 +296,7 @@ to calculate
       ;; fuel-moisture-content >= 30
       [set fire-danger-index-grass (2.0 * FuelWeight * e ^ (-23.6 + 5.01 * ln (DegreeCuring) + 0.0281 * AirTemperature - 0.226 * sqrt (Humidity) + 0.633 * sqrt (WindSpeed)))]]
   ;; Area = forest
-  set fire-danger-index (1.25 * drought-factor * e ^ (((AirTemperature - Humidity) / (20.0)) + 0.0234 * WindSpeed))
+  set fire-danger-index (1.25 * drought-factor * e ^ (((AirTemperature -  ( Humidity / 100) ) / (20.0)) + 0.0234 * WindSpeed))
 
   ;; Calculating Fire Spread Rate
   set fire-spread-rate-grass (0.13 * fire-danger-index)
@@ -475,7 +472,7 @@ density
 density
 0.0
 99.0
-85.0
+70.0
 1.0
 1
 %
@@ -490,7 +487,7 @@ DegreeCuring
 DegreeCuring
 0
 100
-87.0
+51.0
 1
 1
 %
@@ -505,7 +502,7 @@ Precipitation
 Precipitation
 0
 200
-0.155
+0.0
 1
 1
 mm
@@ -550,7 +547,7 @@ AirTemperature
 AirTemperature
 -10
 40
-17.230000000000018
+22.70300000000003
 1
 1
 ºC
@@ -565,7 +562,7 @@ WindSpeed
 WindSpeed
 0
 50
-1.36
+1.91
 1
 1
 m/s
@@ -580,7 +577,7 @@ WindDirection
 WindDirection
 -179
 180
--94.99700000000001
+-82.49799999999999
 1
 1
 º from North
@@ -595,7 +592,7 @@ Humidity
 Humidity
 0
 100
-91.0
+68.0
 1
 1
 %
@@ -610,7 +607,7 @@ FuelWeight
 FuelWeight
 0
 100
-13.0
+7.0
 1
 1
 tonnes/ha
@@ -633,7 +630,7 @@ INPUTBOX
 1032
 103
 xcoord
-0.0
+70.0
 1
 0
 Number
@@ -650,21 +647,21 @@ ycoord
 Number
 
 MONITOR
-1104
-355
-1245
-400
+977
+281
+1118
+326
 DamagesHabitation
-burned-houses
-17
+(burned-houses / initial-houses) * 100
+2
 1
 11
 
 PLOT
-853
-509
-1053
-659
+857
+525
+1057
+675
 Active Fires
 Minutes
 100m2
@@ -684,19 +681,19 @@ INPUTBOX
 827
 517
 tickLimit
-10000.0
+3500.0
 1
 0
 Number
 
 PLOT
-1087
-519
-1287
-669
+1063
+525
+1263
+675
 Burn percentage
-NIL
-NIL
+Minutes
+%
 0.0
 10.0
 0.0
@@ -708,35 +705,35 @@ PENS
 "default" 1.0 0 -16777216 true "" "plot (burned-trees / initial-trees) * 100"
 
 SLIDER
-986
+975
 123
-1158
+1147
 156
 clearFuel
 clearFuel
 0
 14
-0.0
+7.0
 1
 1
 kg/m2
 HORIZONTAL
 
 SWITCH
-986
+975
 178
-1152
+1141
 211
 drawHabitation
 drawHabitation
-0
+1
 1
 -1000
 
 SWITCH
-989
+978
 227
-1122
+1111
 260
 exportImages
 exportImages
@@ -745,10 +742,10 @@ exportImages
 -1000
 
 PLOT
-598
-531
-798
-681
+435
+526
+635
+676
 Temperature
 Minutes
 ºC
@@ -768,10 +765,64 @@ INPUTBOX
 1105
 521
 ConfigurationFile
-configs/Porto_PT_2018-06-26 03_00_00
+configs/Tondela_PT_2018-06-26 21_00_00
 1
 0
 String
+
+PLOT
+221
+526
+421
+676
+Wind Speed
+Minutes
+m/s
+0.0
+10.0
+0.0
+7.0
+true
+false
+"" ""
+PENS
+"default" 1.0 0 -16777216 true "" "plot WindSpeed"
+
+PLOT
+646
+525
+846
+675
+Humidity
+Minutes
+%
+0.0
+10.0
+0.0
+10.0
+true
+false
+"" ""
+PENS
+"default" 1.0 0 -16777216 true "" "plot Humidity"
+
+PLOT
+16
+526
+216
+676
+Damaged Habitations
+Minutes
+%
+0.0
+10.0
+0.0
+10.0
+true
+false
+"" ""
+PENS
+"default" 1.0 0 -16777216 true "" "plot (burned-houses / initial-houses) * 100"
 
 @#$#@#$#@
 ## WHAT IS IT?
