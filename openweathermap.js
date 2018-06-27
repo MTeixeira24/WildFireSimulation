@@ -1,4 +1,3 @@
-// GENERATES USERS FOR TESTING PURPOSES
 const fs = require('fs');
 const http = require('http');
 
