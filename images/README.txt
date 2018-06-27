@@ -1,0 +1,1 @@
+This folder stores the output views images from the simulation.

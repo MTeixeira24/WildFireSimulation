@@ -1,15 +1,15 @@
 extensions [ gis ]
 
 globals [
-  initial-trees   ;; how many trees (green patches) we started with
-  burned-trees    ;; how many have burned so far
-  fire-spread-rate ;; Rate of spread of the fire
+  initial-trees   ; how many trees (green patches) we started with
+  burned-trees    ; how many have burned so far
+  fire-spread-rate ; Rate of spread of the fire
   fire-spread-rate-grass
   fire-spread-rate-wind
   fire-spread-rate-theta
   ellipseLTW
   ellipseEccentricity
-  thetaAngle ;; variable value
+  thetaAngle ; variable value
   fire-spread-rate-N
   fire-spread-rate-NW
   fire-spread-rate-NE
@@ -35,30 +35,46 @@ globals [
   precipitations
   humidities
   winds
-  elevation slope aspect
+  elevation
+  slope
+  relativeElevation
+  showElevation
+  N-slope
+  S-slope
+  W-slope
+  E-slope
+  NW-slope
+  NE-slope
+  SW-slope
+  SE-slope
 ]
-;;100m2
-;;casas de 2 ou 3 ou 4
-;;explorar com o número de linhas limpas.
-;;Embers fligh with the wind
-;;habitação e custo de limpeza.
-;;clean ainda têm combustivel
-;; 4000m2 area limpa
-breed [fires fire]    ;; bright red turtles -- the leading edge of the fire
-breed [embers ember]  ;; turtles gradually fading from red to near black
+;100m2
+;casas de 2 ou 3 ou 4
+;explorar com o número de linhas limpas.
+;Embers fligh with the wind
+;habitação e custo de limpeza.
+;clean ainda têm combustivel
+; 4000m2 area limpa
+breed [fires fire]    ; bright red turtles -- the leading edge of the fire
+breed [embers ember]  ; turtles gradually fading from red to near black
 
 turtles-own [spreadNW spreadNorth spreadNE spreadEast spreadSE spreadSouth spreadSW spreadWest]
 patches-own [fuel landscape]
 to setup
   clear-all
-  set treeColor green - 1
-  set grassColor green
-  set clearColor green + 2
-  set fuelWeightPerPatchGrass 28 ;;kg/100m2 0.2802 kg/m2 source https://journals.uair.arizona.edu/index.php/jrm/article/viewFile/4316/3927
+  set treeColor green - 1 ; cor da arvóre (verde escuro)
+  set grassColor green ; cor da relva (verde)
+  set clearColor green + 2 ; cor da zona limpa (verde claro)
+  set fuelWeightPerPatchGrass 28 ; kg/100m2 0.2802 kg/m2 source https://journals.uair.arizona.edu/index.php/jrm/article/viewFile/4316/3927
   set-default-shape turtles "square"
-  ;; make some green trees
+  ; make some green trees
   ask patches with [(random-float 100) < density]
-    [ set pcolor treeColor ]
+    [
+      set pcolor treeColor
+      set landscape "tree"
+  ]
+
+  ; draws a small village with the houses in yellow
   if drawHabitation [
     foreach [20 25 30 35 40] [
       x -> foreach [20 25 30 35] [
@@ -85,14 +101,17 @@ to setup
       ]
     ]
   ]
-  set fuelWeightPerPatch fuelWeight * 10 ;; Convert to kg/100m2
+
+  ; assign fuelWeigth to each patch
+  set fuelWeightPerPatch fuelWeight * 10 ; Convert to kg/100m2
   ask patches with [ pcolor = treeColor ] [ set fuel fuelWeightPerPatch ]
   ask patches with [ pcolor < treeColor AND pcolor != yellow] [
     set pcolor grassColor
     set landscape "grass"
     set fuel fuelWeightPerPatchGrass
   ]
-;; set tree counts
+
+  ; set tree counts
   set initial-trees count patches with [pcolor = treeColor]
   set initial-houses count patches with [landscape = "house"]
   set burned-trees 0
@@ -102,50 +121,73 @@ to setup
     ask neighbors4 [ignite]
   ]
 
+  ; calculates values for the first time
   calculate
 
-  if exportImages [
-    set-current-directory user-directory
-  ]
-
+  ; reads list of temperatures, precipitation, humidity and wind (speed and direction) from the configuration file
   file-close-all
   file-open ConfigurationFile
   set temperatures file-read
   set precipitations file-read
   set humidities file-read
   set winds file-read
-  print temperatures
-  print precipitations
-  print humidities
-  print winds
   file-close-all
 
-  ; elevations
-  set elevation gis:load-dataset "data/local-elevation.asc"
+  ; read elevations from the asc file
+  set elevation gis:load-dataset ElevationFile
   gis:set-world-envelope gis:envelope-of elevation
-  let horizontal-gradient gis:convolve elevation 3 3 [ 1 1 1 0 0 0 -1 -1 -1 ] 1 1
-  let vertical-gradient gis:convolve elevation 3 3 [ 1 0 -1 1 0 -1 1 0 -1 ] 1 1
-  set slope gis:create-raster gis:width-of elevation gis:height-of elevation gis:envelope-of elevation
-  set aspect gis:create-raster gis:width-of elevation gis:height-of elevation gis:envelope-of elevation
+  ; this temporary gradients store the slope in meters for every point in every direction
+  let N-gradient gis:convolve elevation 3 3 [ 1 2 1 0 0 0 -1 -2 -1 ] 1 1
+  let S-gradient gis:convolve elevation 3 3 [ -1 -2 -1 0 0 0 1 2 1 ] 1 1
+  let W-gradient gis:convolve elevation 3 3 [1 0 -1 2 0 -2 1 0 -1 ] 1 1
+  let E-gradient gis:convolve elevation 3 3 [-1 0 1 -2 0 2 -1 0 1 ] 1 1
+  let NW-gradient gis:convolve elevation 3 3 [ 2 1 0 1 0 -1 0 -1 -2 ] 1 1
+  let NE-gradient gis:convolve elevation 3 3 [ 0 1 2 -1 0 1 -2 -1 0 ] 1 1
+  let SW-gradient gis:convolve elevation 3 3 [ 0 -1 -2 1 0 -1 2 1 0 ] 1 1
+  let SE-gradient gis:convolve elevation 3 3 [ -2 -1 0 -1 0 1 0 1 2 ] 1 1
+  ; this rasters store the slope in degrees for every point in every direction
+  set N-slope gis:create-raster gis:width-of elevation gis:height-of elevation gis:envelope-of elevation
+  set S-slope gis:create-raster gis:width-of elevation gis:height-of elevation gis:envelope-of elevation
+  set W-slope gis:create-raster gis:width-of elevation gis:height-of elevation gis:envelope-of elevation
+  set E-slope gis:create-raster gis:width-of elevation gis:height-of elevation gis:envelope-of elevation
+  set NW-slope gis:create-raster gis:width-of elevation gis:height-of elevation gis:envelope-of elevation
+  set NE-slope gis:create-raster gis:width-of elevation gis:height-of elevation gis:envelope-of elevation
+  set SW-slope gis:create-raster gis:width-of elevation gis:height-of elevation gis:envelope-of elevation
+  set SE-slope gis:create-raster gis:width-of elevation gis:height-of elevation gis:envelope-of elevation
+  ; this raster stores the relative elevation of each point based on the minimum and maximum value, this raster is helpful to represent the ElevationView
+  set relativeElevation gis:create-raster gis:width-of elevation gis:height-of elevation gis:envelope-of elevation
+
+
+  let elevationDiff gis:maximum-of elevation - gis:minimum-of elevation
+  let minElevation gis:minimum-of elevation
   let x 0
-  repeat (gis:width-of slope)
+  repeat (gis:width-of elevation)
   [ let y 0
-    repeat (gis:height-of slope)
-    [ let gx gis:raster-value horizontal-gradient x y
-      let gy gis:raster-value vertical-gradient x y
-      if ((gx <= 0) or (gx >= 0)) and ((gy <= 0) or (gy >= 0))
-      [ let s sqrt ((gx * gx) + (gy * gy))
-        gis:set-raster-value slope x y s
-        ifelse (gx != 0) or (gy != 0)
-        [ gis:set-raster-value aspect x y atan gy gx ]
-        [ gis:set-raster-value aspect x y 0 ] ]
+    repeat (gis:height-of elevation)
+    [ gis:set-raster-value relativeElevation x y ((gis:raster-value elevation x y - minElevation) / elevationDiff)
+
+      ; converts the previous gradients from meters to degrees
+      let gN gis:raster-value N-gradient x y
+      let gS gis:raster-value S-gradient x y
+      let gW gis:raster-value W-gradient x y
+      let gE gis:raster-value E-gradient x y
+      let gNW gis:raster-value NW-gradient x y
+      let gNE gis:raster-value NE-gradient x y
+      let gSW gis:raster-value SW-gradient x y
+      let gSE gis:raster-value SE-gradient x y
+      if ((gN <= 0) or (gN >= 0)) [ gis:set-raster-value N-slope x y (heading-to-angle (atan 100 (gis:raster-value N-gradient x y))) ]
+      if ((gS <= 0) or (gS >= 0)) [ gis:set-raster-value S-slope x y (heading-to-angle (atan 100 (gis:raster-value S-gradient x y))) ]
+      if ((gW <= 0) or (gW >= 0)) [ gis:set-raster-value W-slope x y (heading-to-angle (atan 100 (gis:raster-value W-gradient x y))) ]
+      if ((gE <= 0) or (gE >= 0)) [ gis:set-raster-value E-slope x y (heading-to-angle (atan 100 (gis:raster-value E-gradient x y))) ]
+      if ((gNW <= 0) or (gNW >= 0)) [ gis:set-raster-value NW-slope x y (heading-to-angle (atan 100 (gis:raster-value NW-gradient x y))) ]
+      if ((gNE <= 0) or (gNE >= 0)) [ gis:set-raster-value NE-slope x y (heading-to-angle (atan 100 (gis:raster-value NE-gradient x y))) ]
+      if ((gSW <= 0) or (gSW >= 0)) [ gis:set-raster-value SW-slope x y (heading-to-angle (atan 100 (gis:raster-value SW-gradient x y))) ]
+      if ((gSE <= 0) or (gSE >= 0)) [ gis:set-raster-value SE-slope x y (heading-to-angle (atan 100 (gis:raster-value SE-gradient x y))) ]
+
       set y y + 1 ]
     set x x + 1 ]
 
-  print gis:raster-value slope 2 2
-  print gis:raster-value elevation 1 0
-
-
+  set showElevation true
 
   reset-ticks
 end
@@ -187,13 +229,14 @@ to go
     set WindDirection item 1 prevWind + (item 1 nextWind - item 1 prevWind) * (ticks mod 60 / 60)
   ]
 
+  ; recalculates based on new values from temperature, precipitation, humidity and wind
   calculate
 
-  if not any? turtles  ;; either fires or embers
+  if not any? turtles  ; either fires or embers
     [ stop ]
   ask fires
   [ spread ]
-  ask fires ;; checks if fire has spreaded outside of its area
+  ask fires ; checks if fire has spreaded outside of its area
   [
     if spreadNorth > 5 [ ask patches at-points [[0 1]]  [ if pcolor != black  [ignite] ] ]
     if spreadSouth > 5 [ ask patches at-points [[0 -1]]  [ if pcolor != black  [ignite] ] ]
@@ -204,105 +247,118 @@ to go
     if spreadSW > 5 [ ask patches at-points [[-1 -1]]  [ if pcolor != black  [ignite] ] ]
     if spreadSE > 5 [ ask patches at-points [[1 -1]]  [ if pcolor != black [ignite] ] ]
     ask patch-at 0 0 [
-      set fuel fuel - 0.12 ;; decrement the fuel available at the patch. Measurements of fuel burn rate, emissions and thermal efficiency from a domestic two-stage wood-fired hydronic heater
+      set fuel fuel - 0.12 ; decrement the fuel available at the patch. Measurements of fuel burn rate, emissions and thermal efficiency from a domestic two-stage wood-fired hydronic heater
     ]
     let ftemp [fuel] of patch-at 0 0
     ifelse landscape = "grass"
     [set color 10 + ( 5 * ( ftemp / fuelWeightPerPatchGrass ) )]
-    [set color 10 + ( 5 * ( ftemp / fuelWeightPerPatch ) )];; Fade color
-    if ftemp < 1 [ die ] ;; kill turtle when the fuel weight is bellow 1
+    [set color 10 + ( 5 * ( ftemp / fuelWeightPerPatch ) )]; Fade color
+    if ftemp < 1 [ die ] ; kill turtle when the fuel weight is bellow 1
   ]
   ;ask fires [
   ;  [ ask neighbors4 with [pcolor = green]
   ;      [ ignite ]
   ;    set breed embers ]
+
+  ;visual effect
   fade-embers
 
-  if exportImages [
+  if exportImages [ ;exports the current view on every hour passed in the simulation
     if ticks mod 60 = 0 [
       write-current-state ticks / 60
     ]
   ]
 
+  ; checks if number of ticks end-condition is achieved
   ifelse ticks < ticklimit
   [tick]
   [stop]
 end
 
-;; creates the fire turtles
-to ignite  ;; patch procedure
+; creates the fire turtles
+to ignite  ; patch procedure
   sprout-fires 1
     [ set color red ]
-  if pcolor = treeColor [set burned-trees burned-trees + 1]
-  if pcolor = yellow [set burned-houses burned-houses + 1]
+  if landscape = "tree" [set burned-trees burned-trees + 1]
+  if landscape = "house" [set burned-houses burned-houses + 1]
   set pcolor black
 
 end
 
-;; achieve fading color effect for the fire as it burns
+; achieve fading color effect for the fire as it burns
 to fade-embers
   ask embers
-    [ set color color - 0.3  ;; make red darker
-      if color < red - 3.5     ;; are we almost at black?
+    [ set color color - 0.3  ; make red darker
+      if color < red - 3.5     ; are we almost at black?
         [ set pcolor color
           die ] ]
 end
 
 
 to spread
+  let tmpX ((pxcor + 125) / 251) * 195
+  let tmpY ((- pycor + 125) / 251) * 195
+  let tmpNSlope gis:raster-value N-slope tmpX tmpY
+  let tmpSSlope gis:raster-value S-slope tmpX tmpY
+  let tmpWSlope gis:raster-value W-slope tmpX tmpY
+  let tmpESlope gis:raster-value E-slope tmpX tmpY
+  let tmpNWSlope gis:raster-value NW-slope tmpX tmpY
+  let tmpNESlope gis:raster-value NE-slope tmpX tmpY
+  let tmpSWSlope gis:raster-value SW-slope tmpX tmpY
+  let tmpSESlope gis:raster-value SE-slope tmpX tmpY
   ifelse landscape = "grass"[
-    set spreadNorth spreadNorth + last fire-spread-rate-N
-    set spreadSouth spreadSouth + last fire-spread-rate-S
-    set spreadEast spreadEast + last fire-spread-rate-E
-    set spreadWest spreadWest + last fire-spread-rate-W
-    set spreadNE spreadNE + last fire-spread-rate-NE
-    set spreadSE spreadSE + last fire-spread-rate-SE
-    set spreadNW spreadNW + last fire-spread-rate-NW
-    set spreadSW spreadSW + last fire-spread-rate-SW
+    set spreadNorth spreadNorth + last fire-spread-rate-N * slope-modifier tmpNSlope
+    set spreadSouth spreadSouth + last fire-spread-rate-S * slope-modifier tmpSSlope
+    set spreadEast spreadEast + last fire-spread-rate-E * slope-modifier tmpWSlope
+    set spreadWest spreadWest + last fire-spread-rate-W * slope-modifier tmpESlope
+    set spreadNE spreadNE + last fire-spread-rate-NE * slope-modifier tmpNWSlope
+    set spreadSE spreadSE + last fire-spread-rate-SE * slope-modifier tmpNESlope
+    set spreadNW spreadNW + last fire-spread-rate-NW * slope-modifier tmpSWSlope
+    set spreadSW spreadSW + last fire-spread-rate-SW * slope-modifier tmpSESlope
   ][
-    set spreadNorth spreadNorth + first fire-spread-rate-N
-    set spreadSouth spreadSouth + first fire-spread-rate-S
-    set spreadEast spreadEast + first fire-spread-rate-E
-    set spreadWest spreadWest + first fire-spread-rate-W
-    set spreadNE spreadNE + first fire-spread-rate-NE
-    set spreadSE spreadSE + first fire-spread-rate-SE
-    set spreadNW spreadNW + first fire-spread-rate-NW
-    set spreadSW spreadSW + first fire-spread-rate-SW
+    set spreadNorth spreadNorth + first fire-spread-rate-N * slope-modifier tmpNSlope
+    set spreadSouth spreadSouth + first fire-spread-rate-S * slope-modifier tmpSSlope
+    set spreadEast spreadEast + first fire-spread-rate-E * slope-modifier tmpWSlope
+    set spreadWest spreadWest + first fire-spread-rate-W * slope-modifier tmpESlope
+    set spreadNE spreadNE + first fire-spread-rate-NE * slope-modifier tmpNWSlope
+    set spreadSE spreadSE + first fire-spread-rate-SE * slope-modifier tmpNESlope
+    set spreadNW spreadNW + first fire-spread-rate-NW * slope-modifier tmpSWSlope
+    set spreadSW spreadSW + first fire-spread-rate-SW * slope-modifier tmpSESlope
   ]
 end
 
 to calculate
-    ;; Calculating Fuel Moisture Content
+    ; Calculating Fuel Moisture Content
   set fuel-moisture-content ( ( ( 97.7 + 4.06 * Humidity  ) / ( AirTemperature + 6.0 ) ) - ( 0.00854 * Humidity   ) + ( 3000 / DegreeCuring  ) - ( 30 ) )
 
-  ;; Calculating varY (for Forest terrain)
+  ; Calculating varY (for Forest terrain)
   ifelse Precipitation <= 2
   [set varY 0]
   [ifelse DaysSinceRain >= 1
     [set varY ((Precipitation - 2) / DaysSinceRain)]
     [set varY ((Precipitation - 2) / 0.8)]]
 
-  ;; Calculating the Drought Factor (for Forest terrain)
+  ; Calculating the Drought Factor (for Forest terrain)
   set drought-factor max (list (10.5 * (1 - e ^ (-(KeetchByramDroughIndex + 30) / 40)) * ((varY + 42) / (varY ^ (2) + 3 * varY + 42))) 10)
 
-  ;; Calculating Fire Danger Index
-  ;; Area = grassland
+  ; Calculating Fire Danger Index
+  ; Area = grassland
   ifelse fuel-moisture-content < 18
-    ;; fuel-moisture-content < 18
+    ; fuel-moisture-content < 18
     [set fire-danger-index-grass (3.35 * FuelWeight * (e ^ (-0.0987 * fuel-moisture-content + 0.0403 * WindSpeed)))]
-    ;; 18 <= fuel-moisture-content < 30
+    ; 18 <= fuel-moisture-content < 30
     [ifelse fuel-moisture-content < 30
       [set fire-danger-index-grass (0.299 * FuelWeight * (e ^ ((-1.686 + 0.0403 * WindSpeed) * (30 * fuel-moisture-content))))]
-      ;; fuel-moisture-content >= 30
+      ; fuel-moisture-content >= 30
       [set fire-danger-index-grass (2.0 * FuelWeight * e ^ (-23.6 + 5.01 * ln (DegreeCuring) + 0.0281 * AirTemperature - 0.226 * sqrt (Humidity) + 0.633 * sqrt (WindSpeed)))]]
-  ;; Area = forest
+  ; Area = forest
   set fire-danger-index (1.25 * drought-factor * e ^ (((AirTemperature -  ( Humidity / 100) ) / (20.0)) + 0.0234 * WindSpeed))
 
-  ;; Calculating Fire Spread Rate
+  ; Calculating Fire Spread Rate
   set fire-spread-rate-grass (0.13 * fire-danger-index)
   set fire-spread-rate (0.0012 * fire-danger-index * fuelWeight)
 
-  ;;Calculating fire spread in the presence of wind
+  ;Calculating fire spread in the presence of wind
   ;set ellipseLTW  ( 0.936 * e ^ (50.5 * WindSpeed) ) + ( 0.461 * e ^ (-30.5 * WindSpeed) ) - 0.397
   ;set ellipseEccentricity  sqrt ( 1 - (1 / ( ellipseLTW ^ 2 )) )
 
@@ -312,6 +368,7 @@ to calculate
   set thetaAngle 20 ; RANDOM VALUE FOR TESTING
   set fire-spread-rate-theta fire-spread-rate * ( (1 - ellipseEccentricity) / (1 - ellipseEccentricity * cos thetaAngle) )
 
+  ;modifies the fire spread rate with the wind based on the direction
   set fire-spread-rate-N calculateWindSpread 0
   set fire-spread-rate-NE calculateWindSpread 45
   set fire-spread-rate-NW calculateWindSpread -45
@@ -322,6 +379,7 @@ to calculate
   set fire-spread-rate-E calculateWindSpread 90
 end
 
+; exports current state to an image .png and place it in the folder images. The exported image is named with the number of hours passed from the beginning of the wildfire
 to write-current-state [hour]
   export-view (word "images/" hour ".png")
   ;file-open (word hour)
@@ -331,10 +389,35 @@ to write-current-state [hour]
   ;file-close-all
 end
 
+; toogles elevation view
+; if showElevation the higher zones appear darker and the ones in a lower level appear lighter
+to toogleElevation
+  ifelse showElevation
+  [ set showElevation false
+    ask patches with [pcolor > 50 AND pcolor < 60][
+      set pcolor pcolor - (gis:raster-value relativeElevation (((pxcor + 125) / 251) * 195) ((((- pycor + 125) / 251) * 195))) * 2 + 1
+    ]
+  ]
+  [ set showElevation true
+    ask patches with [pcolor > 50 AND pcolor < 60][
+      set pcolor pcolor + (gis:raster-value relativeElevation (((pxcor + 125) / 251) * 195) ((((- pycor + 125) / 251) * 195))) * 2 - 1
+    ]
+  ]
+end
 
+; convert a turtle heading (obtained with atan or otherwise) to a normal mathematical angle from [-90, 90]
+to-report heading-to-angle [ h ]
+  let mathAngle (90 - h) mod 360
+  if(mathAngle >= 270) [
+    set mathAngle mathAngle - 360
+  ]
+  report mathAngle
+end
 
-; Copyright 1997 Uri Wilensky.
-; See Info tab for full copyright and license.
+; calculates the fire spread modifier based on the angle of the slope
+to-report slope-modifier [ angle ]
+  report e ^ 0.069 * angle
+end
 @#$#@#$#@
 GRAPHICS-WINDOW
 200
@@ -472,7 +555,7 @@ density
 density
 0.0
 99.0
-70.0
+49.0
 1.0
 1
 %
@@ -487,7 +570,7 @@ DegreeCuring
 DegreeCuring
 0
 100
-51.0
+41.0
 1
 1
 %
@@ -547,7 +630,7 @@ AirTemperature
 AirTemperature
 -10
 40
-22.70300000000003
+11.682833333333363
 1
 1
 ºC
@@ -562,7 +645,7 @@ WindSpeed
 WindSpeed
 0
 50
-1.91
+1.0908333333333333
 1
 1
 m/s
@@ -577,7 +660,7 @@ WindDirection
 WindDirection
 -179
 180
--82.49799999999999
+-88.68395000000001
 1
 1
 º from North
@@ -592,7 +675,7 @@ Humidity
 Humidity
 0
 100
-68.0
+91.75
 1
 1
 %
@@ -726,7 +809,7 @@ SWITCH
 211
 drawHabitation
 drawHabitation
-1
+0
 1
 -1000
 
@@ -823,6 +906,34 @@ false
 "" ""
 PENS
 "default" 1.0 0 -16777216 true "" "plot (burned-houses / initial-houses) * 100"
+
+BUTTON
+978
+343
+1101
+376
+Toogle Elevation
+toogleElevation
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+INPUTBOX
+981
+391
+1224
+451
+ElevationFile
+data/local-elevation.asc
+1
+0
+String
 
 @#$#@#$#@
 ## WHAT IS IT?
@@ -1196,7 +1307,7 @@ false
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 @#$#@#$#@
-NetLogo 6.0.4
+NetLogo 6.0.3
 @#$#@#$#@
 set density 60.0
 setup
